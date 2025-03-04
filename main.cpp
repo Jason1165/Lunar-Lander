@@ -20,7 +20,6 @@
 #include "Entity.h"
 
 // ----- CONSTANTS ----- //
-
 // ----- DONT CHANGE ----- //
 constexpr float WINDOW_MULTI = 1.0f;
 constexpr int WINDOW_WIDTH = 640 * WINDOW_MULTI,
@@ -45,12 +44,17 @@ constexpr GLint NUMBER_OF_TEXTURES = 1,
 				LEVEL_OF_DETAIL = 0,
 				TEXTURE_BORDER = 0;
 
+// ----- OBJECT CONSTANTS ----- //
+constexpr char SHIP_FILEPATH[] = "assets/baguette.png";
+
 // ————— STRUCTS AND ENUMS —————//
 enum AppStatus { RUNNING, TERMINATED };
 
 // ----- GAME CONSTANTS ----- //
 
-struct GameState {};
+struct GameState {
+    Entity* ship;
+};
 
 // TO BE MODIFIED
 
@@ -73,6 +77,8 @@ void render();
 void shutdown();
 
 GLuint load_texture(const char* filepath);
+
+
 
 // ———— GENERAL FUNCTIONS ———— //
 GLuint load_texture(const char* filepath)
@@ -137,7 +143,14 @@ void initialise()
 
     glUseProgram(g_shader_program.get_program_id());
 
-    glClearColor(BG_RED, BG_BLUE, BG_GREEN, BG_OPACITY);
+    glClearColor(BG_RED, BG_GREEN, BG_BLUE, BG_OPACITY);
+    
+    // TEXTURES 
+    GLuint ship_texture_id = load_texture(SHIP_FILEPATH);
+
+    // STUFF TO INITIALISE //
+    g_game_state.ship = new Entity(ship_texture_id);
+
 
     // ––––– GENERAL ––––– //
     glEnable(GL_BLEND);
@@ -150,12 +163,19 @@ void process_input()
     while (SDL_PollEvent(&event))
     {
         switch (event.type) {
-            case SDL_QUIT:
-            case SDL_WINDOWEVENT_CLOSE:
+        case SDL_QUIT:
+        case SDL_WINDOWEVENT_CLOSE:
+            g_app_status = TERMINATED;
+            break;
+        case SDL_KEYDOWN:
+            switch (event.key.keysym.sym)
+            {
+            case SDLK_q:
                 g_app_status = TERMINATED;
                 break;
-            default:
-                break;
+            }
+        default:
+            break;
         }
     }
 
@@ -186,6 +206,9 @@ void update()
 void render()
 {
     glClear(GL_COLOR_BUFFER_BIT);
+
+    // THINGS TO RENDER //
+    g_game_state.ship->render(&g_shader_program);
 
     SDL_GL_SwapWindow(g_display_window);
 }
