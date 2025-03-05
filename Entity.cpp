@@ -17,26 +17,58 @@
 
 // Default constructor
 Entity::Entity() :
-	m_position(0.0f),
-	m_movement(0.0f),
-	m_scale(1.0f, 1.0f, 1.0f),
-	m_model_matrix(1.0f),
-	m_velocity(0.0f),
-	m_acceleration(0.0f)
-{
-	// some code for later use?
-}
+    m_position(0.0f),
+    m_movement(0.0f),
+    m_scale(1.0f, 1.0f, 1.0f),
+    m_model_matrix(1.0f),
+    m_velocity(0.0f),
+    m_acceleration(0.0f),
+    m_speed(0.0f),
+    m_rotation(0.0f, 0.0f, 1.0f),
+    m_angle(0.0f)
+{ }
 
 // Parametereized constructor
-// to be updated as things get complicated
-Entity::Entity(GLuint texture_id) :
-	m_texture_id(texture_id) 
-{
-	Entity(); // calling default constructor cause im lazy
-}
+// current constructor used by the ship
+Entity::Entity(GLuint texture_id, float speed, glm::vec3 acceleration) :
+    m_position(0.0f),
+    m_movement(0.0f),
+    m_scale(1.0f, 1.0f, 1.0f),
+    m_model_matrix(1.0f),
+    m_velocity(0.0f),
+    m_texture_id(texture_id),
+    m_acceleration(acceleration),
+    m_speed(speed),
+    m_rotation(0.0f, 0.0f, 1.0f),
+    m_angle (0.0f)
+{ }
+
 
 // Destructor
-Entity::~Entity() { }
+Entity::~Entity() {}
+
+void Entity::update(float delta_time)
+{
+    m_velocity.x = m_movement.x * m_speed;
+
+
+    // adding gravity
+    m_velocity += m_acceleration * delta_time;
+
+    m_position.y += m_velocity.y * delta_time;
+    // check collision on y
+
+    m_position.x += m_velocity.x * delta_time;
+    // check collision on x
+
+
+    // put the updates in
+    m_model_matrix = glm::mat4(1.0f);
+    m_model_matrix = glm::translate(m_model_matrix, m_position);
+    m_model_matrix = glm::rotate(m_model_matrix, glm::radians(m_angle), m_rotation);
+    m_model_matrix = glm::scale(m_model_matrix, m_scale);
+}
+
 
 void Entity::render(ShaderProgram* program)
 {
@@ -62,6 +94,22 @@ void Entity::render(ShaderProgram* program)
 
     glDisableVertexAttribArray(program->get_position_attribute());
     glDisableVertexAttribArray(program->get_tex_coordinate_attribute());
+}
+
+void Entity::rotate(float delta_time, AngleDirection direction) 
+{
+    if (direction == LEFT) {
+        m_angle += (delta_time * 1.0f * ANGLE_PER_TIME);
+    }
+    if (direction == RIGHT) {
+        m_angle += (delta_time * -1.0f * ANGLE_PER_TIME);
+    }
+    //LOG(m_angle);
+}
+
+void Entity::updateFuel(float delta_time, FuelDirection direction)
+{
+
 }
 
 

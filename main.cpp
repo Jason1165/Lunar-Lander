@@ -1,4 +1,4 @@
-#define LOG(argument) std::cout << argument << '\n'
+ï»¿#define LOG(argument) std::cout << argument << '\n'
 #define STB_IMAGE_IMPLEMENTATION
 #define GL_SILENCE_DEPRECATION
 #define GL_GLEXT_PROTOTYPES 1
@@ -23,46 +23,48 @@
 // ----- DONT CHANGE ----- //
 constexpr float WINDOW_MULTI = 1.0f;
 constexpr int WINDOW_WIDTH = 640 * WINDOW_MULTI,
-			  WINDOW_HEIGHT = 480 * WINDOW_MULTI;
+WINDOW_HEIGHT = 480 * WINDOW_MULTI;
 
 constexpr float BG_RED = 0.1765625f,
-				BG_GREEN = 0.17265625f,
-				BG_BLUE = 0.1609375f,
-				BG_OPACITY = 1.0f;
+BG_GREEN = 0.17265625f,
+BG_BLUE = 0.1609375f,
+BG_OPACITY = 1.0f;
 
 constexpr int VIEWPORT_X = 0,
-			  VIEWPORT_Y = 0,
-			  VIEWPORT_WIDTH = WINDOW_WIDTH,
-			  VIEWPORT_HEIGHT = WINDOW_HEIGHT;
+VIEWPORT_Y = 0,
+VIEWPORT_WIDTH = WINDOW_WIDTH,
+VIEWPORT_HEIGHT = WINDOW_HEIGHT;
 
 constexpr char V_SHADER_PATH[] = "shaders/vertex_textured.glsl",
-			   F_SHADER_PATH[] = "shaders/fragment_textured.glsl";
+F_SHADER_PATH[] = "shaders/fragment_textured.glsl";
 
 constexpr float MILLISECONDS_IN_SECOND = 1000.0;
 
 constexpr GLint NUMBER_OF_TEXTURES = 1,
-				LEVEL_OF_DETAIL = 0,
-				TEXTURE_BORDER = 0;
+LEVEL_OF_DETAIL = 0,
+TEXTURE_BORDER = 0;
 
 // ----- OBJECT CONSTANTS ----- //
 constexpr char SHIP_FILEPATH[] = "assets/baguette.png";
 
-// ————— STRUCTS AND ENUMS —————//
+// ----- STRUCTS AND ENUMS ----- //
 enum AppStatus { RUNNING, TERMINATED };
 
 // ----- GAME CONSTANTS ----- //
 
-struct GameState {
+struct GameState
+{
     Entity* ship;
 };
 
 // TO BE MODIFIED
 
-// ————— VARIABLES ————— //
+// ----- VARIABLES ----- //
 GameState g_game_state;
 
 SDL_Window* g_display_window;
 AppStatus g_app_status = RUNNING;
+AngleDirection g_angle_dir = NONE;
 
 ShaderProgram g_shader_program;
 glm::mat4 g_view_matrix, g_projection_matrix;
@@ -80,7 +82,7 @@ GLuint load_texture(const char* filepath);
 
 
 
-// ———— GENERAL FUNCTIONS ———— //
+// ---- GENERAL FUNCTIONS ---- //
 GLuint load_texture(const char* filepath)
 {
     int width, height, number_of_components;
@@ -144,21 +146,28 @@ void initialise()
     glUseProgram(g_shader_program.get_program_id());
 
     glClearColor(BG_RED, BG_GREEN, BG_BLUE, BG_OPACITY);
-    
+
     // TEXTURES 
     GLuint ship_texture_id = load_texture(SHIP_FILEPATH);
 
     // STUFF TO INITIALISE //
-    g_game_state.ship = new Entity(ship_texture_id);
+    g_game_state.ship = new Entity(
+        ship_texture_id,                    // texture_id
+        5.0f,                               // speed
+        glm::vec3(5.0f, -0.1f, 0.0f)         // acceleration vector
+    );
 
 
-    // ––––– GENERAL ––––– //
+    // ----- GENERAL ----- //
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 void process_input()
 {
+    // reset yee and yaw
+    g_angle_dir = NONE;
+
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
@@ -180,6 +189,16 @@ void process_input()
     }
 
     const Uint8* key_state = SDL_GetKeyboardState(NULL);
+    if (key_state[SDL_SCANCODE_LEFT]) {
+        g_angle_dir = LEFT;
+    }
+    else if (key_state[SDL_SCANCODE_RIGHT]) {
+        g_angle_dir = RIGHT;
+    }
+    else if (key_state[SDL_SCANCODE_UP]) {
+
+    }
+
 }
 
 void update()
@@ -198,11 +217,17 @@ void update()
 
     while (delta_time >= FIXED_TIMESTEP)
     {
+        g_game_state.ship->update(FIXED_TIMESTEP);
+        if (g_angle_dir != NONE) {
+            g_game_state.ship->rotate(FIXED_TIMESTEP, g_angle_dir);
+;        }
         delta_time -= FIXED_TIMESTEP;
     }
 
     g_accumulator = delta_time;
 }
+
+
 void render()
 {
     glClear(GL_COLOR_BUFFER_BIT);
@@ -213,6 +238,7 @@ void render()
     SDL_GL_SwapWindow(g_display_window);
 }
 
+
 void shutdown()
 {
     SDL_Quit();
@@ -220,7 +246,7 @@ void shutdown()
     // delete pointers
 }
 
-// ––––– GAME LOOP ––––– //
+// ----- GAME LOOP ----- //
 int main(int argc, char* argv[])
 {
     initialise();

@@ -4,6 +4,10 @@
 #include "glm/glm.hpp"
 #include "ShaderProgram.h"
 
+enum AngleDirection { LEFT, RIGHT, NONE };
+enum FuelDirection { UP, DOWN };
+
+
 class Entity
 {
 private:
@@ -14,8 +18,12 @@ private:
 	glm::vec3 m_scale;
 	glm::vec3 m_velocity;
 	glm::vec3 m_acceleration;
+	glm::vec3 m_rotation; // rotation matrix, about which axis
 
 	glm::mat4 m_model_matrix;
+
+	float m_speed;
+	float m_angle; // angle accumulator
 
 	// ----- TEXTURES ----- //
 	GLuint m_texture_id;
@@ -29,13 +37,17 @@ private:
 public:
 	// ----- STATIC VARIABLES ----- //
 	static constexpr int SECONDS_PER_FRAME = 1;
+	static constexpr float ANGLE_PER_TIME = 15.0f;
 
 	// ----- METHODS ----- //
 	Entity();
-	Entity(GLuint texture_id);
+	Entity(GLuint texture_id, float speed, glm::vec3 acceleration);
 	~Entity();
 
+	void update(float delta_time);
 	void render(ShaderProgram* program);
+	void rotate(float delta_time, AngleDirection dir);
+	void updateFuel(float delta_time, FuelDirection direction);
 
 	// ----- GETTERS ----- //
 	glm::vec3 const get_position()     const { return m_position; }
