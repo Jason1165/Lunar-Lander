@@ -49,7 +49,9 @@ Entity::~Entity() {}
 
 void Entity::update(float delta_time)
 {
-    m_velocity.x = m_movement.x * m_speed;
+    // I think we don't need this
+    //m_velocity.x = m_movement.x * m_speed;
+    //m_velocity.y = m_movement.y * m_speed;
 
 
     // adding gravity
@@ -60,7 +62,6 @@ void Entity::update(float delta_time)
 
     m_position.x += m_velocity.x * delta_time;
     // check collision on x
-
 
     // put the updates in
     m_model_matrix = glm::mat4(1.0f);
@@ -104,13 +105,26 @@ void Entity::rotate(float delta_time, AngleDirection direction)
     if (direction == RIGHT) {
         m_angle += (delta_time * -1.0f * ANGLE_PER_TIME);
     }
-    //LOG(m_angle);
 }
 
-void Entity::updateFuel(float delta_time, FuelDirection direction)
+void Entity::updateFuel(float delta_time, bool using_fuel)
 {
-
+    // reset acceleration matrix
+    m_acceleration = glm::vec3(0.0f);
+    if (using_fuel) {
+        m_acceleration.x = glm::cos(glm::radians(m_angle));
+        m_acceleration.y = glm::sin(glm::radians(m_angle));
+    }
+    m_acceleration.x *= ACCEL_SCALE;
+    m_acceleration.y *= ACCEL_SCALE;
+    m_acceleration.y -= GRAVITY;
 }
 
 
-
+const void Entity::log_attributes() {
+    std::cout << "Velocity: " << m_velocity.x << " " << m_velocity.y << std::endl;
+    std::cout << "Acceleration: " << m_acceleration.x << " " << m_acceleration.y << std::endl;
+    std::cout << "Position: " << m_position.x << " " << m_position.y << std::endl;
+    std::cout << "Angle: " << m_angle << std::endl;
+    std::cout << std::endl;
+}

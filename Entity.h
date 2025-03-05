@@ -5,8 +5,6 @@
 #include "ShaderProgram.h"
 
 enum AngleDirection { LEFT, RIGHT, NONE };
-enum FuelDirection { UP, DOWN };
-
 
 class Entity
 {
@@ -37,17 +35,21 @@ private:
 public:
 	// ----- STATIC VARIABLES ----- //
 	static constexpr int SECONDS_PER_FRAME = 1;
-	static constexpr float ANGLE_PER_TIME = 15.0f;
+	static constexpr float ANGLE_PER_TIME = 90.0f;
+	static constexpr float GRAVITY = 0.2f;
+	static constexpr float FUEL_PER_TIME = 1.0f;
+	static constexpr float ACCEL_SCALE = 1.0f;
 
 	// ----- METHODS ----- //
 	Entity();
 	Entity(GLuint texture_id, float speed, glm::vec3 acceleration);
 	~Entity();
 
+	const void log_attributes();
 	void update(float delta_time);
 	void render(ShaderProgram* program);
 	void rotate(float delta_time, AngleDirection dir);
-	void updateFuel(float delta_time, FuelDirection direction);
+	void updateFuel(float delta_time, bool using_fuel);
 
 	// ----- GETTERS ----- //
 	glm::vec3 const get_position()     const { return m_position; }

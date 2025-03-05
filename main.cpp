@@ -25,9 +25,9 @@ constexpr float WINDOW_MULTI = 1.0f;
 constexpr int WINDOW_WIDTH = 640 * WINDOW_MULTI,
 WINDOW_HEIGHT = 480 * WINDOW_MULTI;
 
-constexpr float BG_RED = 0.1765625f,
-BG_GREEN = 0.17265625f,
-BG_BLUE = 0.1609375f,
+constexpr float BG_RED = 1.0f,
+BG_GREEN = 1.0f,
+BG_BLUE = 1.0f,
 BG_OPACITY = 1.0f;
 
 constexpr int VIEWPORT_X = 0,
@@ -44,8 +44,14 @@ constexpr GLint NUMBER_OF_TEXTURES = 1,
 LEVEL_OF_DETAIL = 0,
 TEXTURE_BORDER = 0;
 
+constexpr int FONTBANK_ROWS = 8;
+constexpr int FONTBANK_COLS = 16;
+
+
 // ----- OBJECT CONSTANTS ----- //
+GLuint g_font_texture_id;
 constexpr char SHIP_FILEPATH[] = "assets/baguette.png";
+constexpr char FONTSHEET_FILEPATH[] = "assets/modified_atari_font.png";
 
 // ----- STRUCTS AND ENUMS ----- //
 enum AppStatus { RUNNING, TERMINATED };
@@ -65,6 +71,7 @@ GameState g_game_state;
 SDL_Window* g_display_window;
 AppStatus g_app_status = RUNNING;
 AngleDirection g_angle_dir = NONE;
+bool g_using_fuel = false;
 
 ShaderProgram g_shader_program;
 glm::mat4 g_view_matrix, g_projection_matrix;
@@ -111,11 +118,79 @@ GLuint load_texture(const char* filepath)
     return textureID;
 }
 
+void draw_text(ShaderProgram* shader_program, GLuint font_texture_id, std::string text,
+    float font_size, float spacing, glm::vec3 position)
+{
+    // Scale the size of the fontbank in the UV-plane
+    // We will use this for spacing and positioning
+    float width = 1.0f / FONTBANK_COLS;
+    float height = 1.0f / FONTBANK_ROWS;
+
+    // Instead of having a single pair of arrays, we'll have a series of pairs—one for
+    // each character. Don't forget to include <vector>!
+    std::vector<float> vertices;
+    std::vector<float> texture_coordinates;
+
+    // For every character...
+    for (int i = 0; i < text.size(); i++) {
+        // 1. Get their index in the spritesheet, as well as their offset (i.e. their
+        //    position relative to the whole sentence)
+        int spritesheet_index = (int)text[i];  // ascii value of character
+        float offset = (font_size + spacing) * i;
+
+        // 2. Using the spritesheet index, we can calculate our U- and V-coordinates
+        float u_coordinate = (float)(spritesheet_index % FONTBANK_COLS) / FONTBANK_COLS;
+        float v_coordinate = (float)(spritesheet_index / FONTBANK_COLS) / FONTBANK_ROWS;
+
+        // 3. Inset the current pair in both vectors
+        vertices.insert(vertices.end(), {
+            offset + (-0.5f * font_size), 0.5f * font_size,
+            offset + (-0.5f * font_size), -0.5f * font_size,
+            offset + (0.5f * font_size), 0.5f * font_size,
+            offset + (0.5f * font_size), -0.5f * font_size,
+            offset + (0.5f * font_size), 0.5f * font_size,
+            offset + (-0.5f * font_size), -0.5f * font_size,
+            });
+
+        texture_coordinates.insert(texture_coordinates.end(), {
+            u_coordinate, v_coordinate,
+            u_coordinate, v_coordinate + height,
+            u_coordinate + width, v_coordinate,
+            u_coordinate + width, v_coordinate + height,
+            u_coordinate + width, v_coordinate,
+            u_coordinate, v_coordinate + height,
+            });
+    }
+
+    // 4. And render all of them using the pairs
+    glm::mat4 model_matrix = glm::mat4(1.0f);
+    model_matrix = glm::translate(model_matrix, position);
+    // custom scale to preserve original dimensions
+    model_matrix = glm::scale(model_matrix, glm::vec3(0.5f, 1.0f, 1.0f));
+
+    shader_program->set_model_matrix(model_matrix);
+    glUseProgram(shader_program->get_program_id());
+
+    glVertexAttribPointer(shader_program->get_position_attribute(), 2, GL_FLOAT, false, 0,
+        vertices.data());
+    glEnableVertexAttribArray(shader_program->get_position_attribute());
+
+    glVertexAttribPointer(shader_program->get_tex_coordinate_attribute(), 2, GL_FLOAT,
+        false, 0, texture_coordinates.data());
+    glEnableVertexAttribArray(shader_program->get_tex_coordinate_attribute());
+
+    glBindTexture(GL_TEXTURE_2D, font_texture_id);
+    glDrawArrays(GL_TRIANGLES, 0, (int)(text.size() * 6));
+
+    glDisableVertexAttribArray(shader_program->get_position_attribute());
+    glDisableVertexAttribArray(shader_program->get_tex_coordinate_attribute());
+}
+
 
 void initialise()
 {
     SDL_Init(SDL_INIT_VIDEO);
-    g_display_window = SDL_CreateWindow("Hello, Entities!",
+    g_display_window = SDL_CreateWindow("Lunar Lander!",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         WINDOW_WIDTH, WINDOW_HEIGHT,
         SDL_WINDOW_OPENGL);
@@ -149,13 +224,16 @@ void initialise()
 
     // TEXTURES 
     GLuint ship_texture_id = load_texture(SHIP_FILEPATH);
+    g_font_texture_id = load_texture(FONTSHEET_FILEPATH);
+
 
     // STUFF TO INITIALISE //
     g_game_state.ship = new Entity(
         ship_texture_id,                    // texture_id
         5.0f,                               // speed
-        glm::vec3(5.0f, -0.1f, 0.0f)         // acceleration vector
+        glm::vec3(0.0f, 0.0f, 0.0f)        // acceleration vector
     );
+    g_game_state.ship->set_movement(glm::vec3(0.0f, 0.0f, 0.0f));
 
 
     // ----- GENERAL ----- //
@@ -165,8 +243,9 @@ void initialise()
 
 void process_input()
 {
-    // reset yee and yaw
+    // reset 
     g_angle_dir = NONE;
+    g_using_fuel = false;
 
     SDL_Event event;
     while (SDL_PollEvent(&event))
@@ -196,7 +275,7 @@ void process_input()
         g_angle_dir = RIGHT;
     }
     else if (key_state[SDL_SCANCODE_UP]) {
-
+        g_using_fuel = true;
     }
 
 }
@@ -217,11 +296,21 @@ void update()
 
     while (delta_time >= FIXED_TIMESTEP)
     {
-        g_game_state.ship->update(FIXED_TIMESTEP);
+        // update angle first
         if (g_angle_dir != NONE) {
             g_game_state.ship->rotate(FIXED_TIMESTEP, g_angle_dir);
-;        }
+            ;
+        }
+        
+        // update acceleration and fuel usage
+        g_game_state.ship->updateFuel(FIXED_TIMESTEP, g_using_fuel);
+
+        // update the position after all of that
+        g_game_state.ship->update(FIXED_TIMESTEP);
+
+        // decrement
         delta_time -= FIXED_TIMESTEP;
+        g_game_state.ship->log_attributes();
     }
 
     g_accumulator = delta_time;
@@ -231,6 +320,10 @@ void update()
 void render()
 {
     glClear(GL_COLOR_BUFFER_BIT);
+
+    // render text
+    draw_text(&g_shader_program, g_font_texture_id, "FUEL", 0.25f, 0.05f,
+        glm::vec3(-3.5f, 2.0f, 0.0f));
 
     // THINGS TO RENDER //
     g_game_state.ship->render(&g_shader_program);
