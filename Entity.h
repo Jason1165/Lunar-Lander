@@ -22,6 +22,7 @@ private:
 
 	float m_speed;
 	float m_angle; // angle accumulator
+	float m_fuel;
 
 	// ----- TEXTURES ----- //
 	GLuint m_texture_id;
@@ -37,7 +38,7 @@ public:
 	static constexpr int SECONDS_PER_FRAME = 1;
 	static constexpr float ANGLE_PER_TIME = 90.0f;
 	static constexpr float GRAVITY = 0.2f;
-	static constexpr float FUEL_PER_TIME = 1.0f;
+	static constexpr int FUEL_PER_TIME = 1;
 	static constexpr float ACCEL_SCALE = 1.0f;
 
 	// ----- METHODS ----- //
@@ -58,6 +59,7 @@ public:
 	glm::vec3 const get_movement()     const { return m_movement; }
 	glm::vec3 const get_scale()        const { return m_scale; }
 	GLuint    const get_texture_id()   const { return m_texture_id; }
+	int	      const get_fuel()		   const { return m_fuel; }
 
 	// ----- SETTERS ----- //
 	void const set_position(glm::vec3 new_position) { m_position = new_position; }

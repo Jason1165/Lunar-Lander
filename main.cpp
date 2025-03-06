@@ -19,6 +19,13 @@
 #include <vector>
 #include "Entity.h"
 
+// ----- SOURCES ----- //
+// Atari font sheet, adapated for this project: https://en.wikipedia.org/wiki/Atari_ST_character_set
+// Ship in a Bottle (SHIP) by Laura Brown, adapted for this project: https://asciiartist.com/ldb/transportationtravelascii.txt
+// Asciiquarium, inspiration for the assets: https://github.com/cmatsuoka/asciiquarium
+// Underwater Castle, taken from asciiquarium, modified for better ratios and hitboxes, credit goes to Joan Stark ???
+
+
 // ----- CONSTANTS ----- //
 // ----- DONT CHANGE ----- //
 constexpr float WINDOW_MULTI = 1.0f;
@@ -44,26 +51,26 @@ constexpr GLint NUMBER_OF_TEXTURES = 1,
 LEVEL_OF_DETAIL = 0,
 TEXTURE_BORDER = 0;
 
-constexpr int FONTBANK_ROWS = 8;
-constexpr int FONTBANK_COLS = 16;
-
 
 // ----- OBJECT CONSTANTS ----- //
 GLuint g_font_texture_id;
-constexpr char SHIP_FILEPATH[] = "assets/baguette.png";
-constexpr char FONTSHEET_FILEPATH[] = "assets/modified_atari_font.png";
+constexpr char SHIP_FILEPATH[] = "assets/bottle_ship_flip.png"; // 208 * 96 13:6
+constexpr char FONTSHEET_FILEPATH[] = "assets/modified_atari_font.png"; // 256 * 256 
+constexpr char PLATFORM1_FILEPATH[] = "assets/castle.png"; // 256 * 128
 
 // ----- STRUCTS AND ENUMS ----- //
 enum AppStatus { RUNNING, TERMINATED };
 
-// ----- GAME CONSTANTS ----- //
-
 struct GameState
 {
     Entity* ship;
+    Entity* platforms;
 };
 
-// TO BE MODIFIED
+// ----- GAME CONSTANTS ----- //
+constexpr int FONTBANK_ROWS = 8;
+constexpr int FONTBANK_COLS = 16;
+constexpr int NUM_PLATFORMS = 1;
 
 // ----- VARIABLES ----- //
 GameState g_game_state;
@@ -224,17 +231,28 @@ void initialise()
 
     // TEXTURES 
     GLuint ship_texture_id = load_texture(SHIP_FILEPATH);
+    GLuint castle_texture_id = load_texture(PLATFORM1_FILEPATH);
     g_font_texture_id = load_texture(FONTSHEET_FILEPATH);
 
+    // ----- STUFF TO INITIALISE ----- //
 
-    // STUFF TO INITIALISE //
+    // ----- SHIP ----- //
     g_game_state.ship = new Entity(
         ship_texture_id,                    // texture_id
         5.0f,                               // speed
         glm::vec3(0.0f, 0.0f, 0.0f)        // acceleration vector
     );
     g_game_state.ship->set_movement(glm::vec3(0.0f, 0.0f, 0.0f));
+    g_game_state.ship->set_scale(glm::vec3(1.0833f, 0.5f, 1.0f));
+    g_game_state.ship->set_position(glm::vec3(-4.5f, 3.5f, 1.0f));
 
+
+    // ----- PLATFORMS ----- //
+    g_game_state.platforms = new Entity[NUM_PLATFORMS];
+    g_game_state.platforms[0] = Entity(castle_texture_id, 0.0f, glm::vec3(0.0f));
+    g_game_state.platforms[0].set_position(glm::vec3(4.0f, -3.25f, 1.0f));
+    g_game_state.platforms[0].set_scale(glm::vec3(2.0f, 1.0f, 1.0f));
+    g_game_state.platforms[0].update(0.0f);
 
     // ----- GENERAL ----- //
     glEnable(GL_BLEND);
@@ -310,7 +328,7 @@ void update()
 
         // decrement
         delta_time -= FIXED_TIMESTEP;
-        g_game_state.ship->log_attributes();
+        //g_game_state.ship->log_attributes();
     }
 
     g_accumulator = delta_time;
@@ -321,12 +339,22 @@ void render()
 {
     glClear(GL_COLOR_BUFFER_BIT);
 
+    std::string fuel_string = "FUEL: " + std::to_string(g_game_state.ship->get_fuel());
+    glm::vec3 curr_velocity = g_game_state.ship->get_velocity();
+    std::string x_velocity = "X_SPEED " + std::to_string(int(curr_velocity.x*100));
+    std::string y_velocity = "Y_SPEED: " + std::to_string(int(curr_velocity.y*100));
     // render text
-    draw_text(&g_shader_program, g_font_texture_id, "FUEL", 0.25f, 0.05f,
-        glm::vec3(-3.5f, 2.0f, 0.0f));
+    draw_text(&g_shader_program, g_font_texture_id, fuel_string, 0.25f, 0.05f, glm::vec3(3.0f, 3.5f, 0.0f));
+    draw_text(&g_shader_program, g_font_texture_id, x_velocity, 0.25f, 0.05f, glm::vec3(3.0f, 3.25f, 0.0f));
+    draw_text(&g_shader_program, g_font_texture_id, y_velocity, 0.25f, 0.05f, glm::vec3(3.0f, 3.0f, 0.0f));
+
 
     // THINGS TO RENDER //
     g_game_state.ship->render(&g_shader_program);
+    for (int i = 0; i < NUM_PLATFORMS; i++) 
+    {
+        g_game_state.platforms[i].render(&g_shader_program);
+    }
 
     SDL_GL_SwapWindow(g_display_window);
 }

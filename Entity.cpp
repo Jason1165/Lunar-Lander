@@ -25,7 +25,8 @@ Entity::Entity() :
     m_acceleration(0.0f),
     m_speed(0.0f),
     m_rotation(0.0f, 0.0f, 1.0f),
-    m_angle(0.0f)
+    m_angle(0.0f),
+    m_fuel(3000.0f)
 { }
 
 // Parametereized constructor
@@ -40,7 +41,8 @@ Entity::Entity(GLuint texture_id, float speed, glm::vec3 acceleration) :
     m_acceleration(acceleration),
     m_speed(speed),
     m_rotation(0.0f, 0.0f, 1.0f),
-    m_angle (0.0f)
+    m_angle (0.0f),
+    m_fuel(3000.0f)
 { }
 
 
@@ -111,9 +113,10 @@ void Entity::updateFuel(float delta_time, bool using_fuel)
 {
     // reset acceleration matrix
     m_acceleration = glm::vec3(0.0f);
-    if (using_fuel) {
+    if (using_fuel && m_fuel > 0) {
         m_acceleration.x = glm::cos(glm::radians(m_angle));
         m_acceleration.y = glm::sin(glm::radians(m_angle));
+        m_fuel -= FUEL_PER_TIME;
     }
     m_acceleration.x *= ACCEL_SCALE;
     m_acceleration.y *= ACCEL_SCALE;
