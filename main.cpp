@@ -28,7 +28,7 @@
 
 // ----- CONSTANTS ----- //
 // ----- DONT CHANGE ----- //
-constexpr float WINDOW_MULTI = 2.0f;
+constexpr float WINDOW_MULTI = 1.5f;
 constexpr int WINDOW_WIDTH = 640 * WINDOW_MULTI,
 WINDOW_HEIGHT = 480 * WINDOW_MULTI;
 
@@ -143,7 +143,7 @@ void draw_text(ShaderProgram* shader_program, GLuint font_texture_id, std::strin
     std::vector<float> texture_coordinates;
 
     // For every character...
-    for (int i = 0; i < text.size(); i++) {
+    for (size_t i = 0; i < text.size(); i++) {
         // 1. Get their index in the spritesheet, as well as their offset (i.e. their
         //    position relative to the whole sentence)
         int spritesheet_index = (int)text[i];  // ascii value of character
@@ -244,22 +244,26 @@ void initialise()
     g_game_state.ship = new Entity(
         ship_texture_id,                    // texture_id
         5.0f,                               // speed
-        glm::vec3(0.0f, 0.0f, 0.0f)        // acceleration vector
+        glm::vec3(0.0f, 0.0f, 0.0f),        // acceleration vector
+        true,                               // use acceleration
+        START                               // GameStatus
     );
     g_game_state.ship->set_movement(glm::vec3(0.0f, 0.0f, 0.0f));
     g_game_state.ship->set_scale(glm::vec3(1.0833f, 0.5f, 1.0f));
     g_game_state.ship->set_position(glm::vec3(-4.5f, 3.5f, 1.0f));
     g_game_state.ship->setDimensions(g_game_state.ship->get_scale().x, g_game_state.ship->get_scale().y);
+    g_game_state.ship->update(0.0f, nullptr, 0);
 
 
     // ----- PLATFORMS ----- //
     g_game_state.platforms = new Entity[NUM_PLATFORMS];
-    g_game_state.platforms[0] = Entity(castle_texture_id, 0.0f, glm::vec3(0.0f));
+    g_game_state.platforms[0] = Entity(castle_texture_id, 0.0f, glm::vec3(0.0f), false, ACTIVE);
     g_game_state.platforms[0].set_position(glm::vec3(4.0f, -3.25f, 1.0f));
     g_game_state.platforms[0].set_scale(glm::vec3(2.0f, 1.0f, 1.0f));
     for (int i = 0; i < NUM_PLATFORMS; i++)
     {
         g_game_state.platforms[i].update(0.0f, nullptr, 0);
+        g_game_state.platforms[i].setDimensions(g_game_state.platforms[i].get_scale().x, g_game_state.platforms[i].get_scale().y);
     }
 
     // ----- GENERAL ----- //
@@ -286,6 +290,11 @@ void process_input()
             {
             case SDLK_q:
                 g_app_status = TERMINATED;
+                break;
+            case SDLK_SPACE:
+                if (g_game_state.ship->get_status() == START) {
+                    g_game_state.ship->set_status(ACTIVE);
+                }
                 break;
             }
         default:
@@ -325,7 +334,6 @@ void update()
         // update angle first
         if (g_angle_dir != NONE) {
             g_game_state.ship->rotate(FIXED_TIMESTEP, g_angle_dir);
-            ;
         }
         
         // update acceleration and fuel usage
@@ -336,7 +344,7 @@ void update()
 
         // decrement
         delta_time -= FIXED_TIMESTEP;
-        g_game_state.ship->log_attributes();
+        //g_game_state.ship->log_attributes();
     }
 
     g_accumulator = delta_time;

@@ -28,14 +28,16 @@ Entity::Entity() :
     m_speed(0.0f),
     m_rotation(0.0f, 0.0f, 1.0f),
     m_angle(0.0f),
-    m_fuel(3000.0f),
+    m_fuel(3000),
     m_width(0.0f),
-    m_height(0.0f)
+    m_height(0.0f),
+    m_use_acceleration(false),
+    m_status(START)
 { }
 
 // Parametereized constructor
 // current constructor used by the ship
-Entity::Entity(GLuint texture_id, float speed, glm::vec3 acceleration) :
+Entity::Entity(GLuint texture_id, float speed, glm::vec3 acceleration, bool use_accel, GameStatus status) :
     m_position(0.0f),
     m_movement(0.0f),
     m_scale(1.0f, 1.0f, 1.0f),
@@ -46,9 +48,11 @@ Entity::Entity(GLuint texture_id, float speed, glm::vec3 acceleration) :
     m_speed(speed),
     m_rotation(0.0f, 0.0f, 1.0f),
     m_angle(0.0f),
-    m_fuel(3000.0f),
+    m_fuel(3000),
     m_width(0.0f),
-    m_height(0.0f)
+    m_height(0.0f),
+    m_use_acceleration(use_accel),
+    m_status(status)
 { }
 
 
@@ -58,29 +62,36 @@ Entity::~Entity() {}
 void Entity::update(float delta_time, Entity* collidable_entities, int collidable_entity_count)
 {
 
-    m_collided_top = false;
-    m_collided_bottom = false;
-    m_collided_left = false;
-    m_collided_right = false;
+    //m_collided_top = false;
+    //m_collided_bottom = false;
+    //m_collided_left = false;
+    //m_collided_right = false;
+
     for (int i = 0; i < collidable_entity_count; i++)
     {
-        if (check_collision(&collidable_entities[i])) return;
+        if (check_collision_SAT(&collidable_entities[i])) {
+            m_velocity = glm::vec3(0.0f); // pause all velocities
+            return;
+        }
     }
 
-    // I think we don't need this
-    //m_velocity.x = m_movement.x * m_speed;
-    //m_velocity.y = m_movement.y * m_speed;
 
-    // adding gravity
-    m_velocity += m_acceleration * delta_time;
+    if (m_status == ACTIVE && !m_use_acceleration) {
+        m_velocity.x = m_movement.x * m_speed;
+        m_velocity.y = m_movement.y * m_speed;
+    }
+    if (m_status == ACTIVE && m_use_acceleration) {
+        // adding gravity
+        m_velocity += m_acceleration * delta_time;
 
-    m_position.y += m_velocity.y * delta_time;
-    // check collision on y
-    check_collision_y(collidable_entities, collidable_entity_count); // this prevents further movement up/dowm
+        m_position.y += m_velocity.y * delta_time;
+        // check collision on y
+        //check_collision_y(collidable_entities, collidable_entity_count); // this prevents further movement up/dowm
 
-    m_position.x += m_velocity.x * delta_time;
-    // check collision on x
-    check_collision_x(collidable_entities, collidable_entity_count); // this prevents further left/right movement
+        m_position.x += m_velocity.x * delta_time;
+        // check collision on x
+        //check_collision_x(collidable_entities, collidable_entity_count); // this prevents further left/right movement
+    }
 
     // put the updates in
     m_model_matrix = glm::mat4(1.0f);
@@ -139,6 +150,131 @@ void Entity::updateFuel(float delta_time, bool using_fuel)
     m_acceleration.y *= ACCEL_SCALE;
     m_acceleration.y -= GRAVITY;
 }
+
+
+void Entity::setDimensions(float x, float y) {
+    m_height = y;
+    m_width = x;
+}
+
+
+// ----- COLLISION STUFF ----- //
+
+std::vector<glm::vec2> Entity::getCorners()
+{
+    std::vector<glm::vec2> corners;
+    float half_width = m_width / 2.0f;
+    float half_height = m_height / 2.0f;
+
+    std::vector<glm::vec2> local_corners = {
+        {-half_width,  half_height},        // Top-left
+        { half_width,  half_height},        // Top-right
+        { half_width, -half_height},        // Bottom-right
+        {-half_width, -half_height}         // Bottom-left
+    };
+
+    float angle_rad = glm::radians(m_angle);
+    float cos_theta = glm::cos(angle_rad);
+    float sin_theta = glm::sin(angle_rad);
+
+    for (auto& vertex : local_corners)
+    {
+        float local_x = vertex.x;
+        float local_y = vertex.y;
+
+        float rotated_x = cos_theta * local_x - sin_theta * local_y;
+        float rotated_y = sin_theta * local_x + cos_theta * local_y;
+
+        corners.push_back(glm::vec2(m_position.x + rotated_x, m_position.y + rotated_y));
+    }
+
+    return corners;
+}
+
+std::vector<glm::vec2> Entity::getEdges()
+{
+    std::vector<glm::vec2> corners = getCorners();
+    std::vector<glm::vec2> edges;
+
+    for (size_t i = 0; i < corners.size(); i++)
+    {
+        edges.push_back(corners[(i + 1) % corners.size()] - corners[i]);
+    }
+
+    return edges;
+}
+
+std::vector<glm::vec2> Entity::getNormal()
+{
+    std::vector<glm::vec2> edges = getEdges();
+    std::vector<glm::vec2> normals;
+
+    for (auto& edge : edges)
+    {
+        normals.push_back(glm::vec2(-edge.y, edge.x));  
+    }
+
+    // Normalize all the normals
+    for (auto& normal : normals)
+    {
+        normal = glm::normalize(normal);
+    }
+
+    return normals;
+}
+
+bool Entity::check_collision_SAT(Entity* other)
+{
+    std::vector<glm::vec2> self_corners = this->getCorners();
+    std::vector<glm::vec2> other_corners = other->getCorners();
+
+    std::vector<glm::vec2> self_normals = this->getNormal();
+    std::vector<glm::vec2> other_normals = other->getNormal();
+
+    std::vector<glm::vec2> axes;
+    axes.insert(axes.end(), self_normals.begin(), self_normals.end());
+    axes.insert(axes.end(), other_normals.begin(), other_normals.end());
+
+    for (auto& axis : axes)
+    {
+        float minA = INFINITY, maxA = -INFINITY;
+        float minB = INFINITY, maxB = -INFINITY;
+
+        for (auto& vertex : self_corners)
+        {
+            float proj = glm::dot(vertex, axis);
+            minA = std::min(minA, proj);
+            maxA = std::max(maxA, proj);
+        }
+
+        for (auto& vertex : other_corners)
+        {
+            float proj = glm::dot(vertex, axis);
+            minB = std::min(minB, proj);  
+            maxB = std::max(maxB, proj);  
+        }
+
+        if (maxA < minB || maxB < minA) {
+            return false;  
+        }
+    }
+
+    return true;  
+}
+
+// ----- DEBUG LOG ----- //
+
+
+const void Entity::log_attributes() {
+    std::cout << "Velocity: " << m_velocity.x << " " << m_velocity.y << std::endl;
+    std::cout << "Acceleration: " << m_acceleration.x << " " << m_acceleration.y << std::endl;
+    std::cout << "Position: " << m_position.x << " " << m_position.y << std::endl;
+    std::cout << "Angle: " << m_angle << std::endl;
+    std::cout << std::endl;
+}
+
+
+// START OF REDUNDANT CODE?
 
 bool const Entity::check_collision(Entity* other) const
 {
@@ -204,7 +340,8 @@ void const Entity::check_collision_x(Entity* collidable_entities, int collidable
                 // Collision!
                 m_collided_right = true;
 
-            } else if (m_velocity.x < 0)
+            }
+            else if (m_velocity.x < 0)
             {
                 m_position.x += x_overlap;
                 m_velocity.x = 0;
@@ -218,96 +355,4 @@ void const Entity::check_collision_x(Entity* collidable_entities, int collidable
     }
 }
 
-void Entity::setDimensions(float x, float y) {
-    m_height = y;
-    m_width = x;
-}
-
-
-std::vector<glm::vec2> Entity::getCorners() 
-{
-    std::vector<glm::vec2> corners;
-    float half_width = m_width / 2.0f;
-    float half_height = m_height / 2.0f;
-
-    // get rectangle vertex
-    // clockwise from (-1,1), (1,1), (1,-1), (-1,-1)
-    corners.push_back(glm::vec2(m_position.x - half_width, m_position.y + half_height));
-    corners.push_back(glm::vec2(m_position.x + half_width, m_position.y + half_height));
-    corners.push_back(glm::vec2(m_position.x + half_width, m_position.y - half_height));
-    corners.push_back(glm::vec2(m_position.x - half_width, m_position.y - half_height));
-
-    // rotate vertex by m_angle
-    float angle_rad = glm::radians(m_angle);
-    float cos_theta = glm::cos(angle_rad);
-    float sin_theta = glm::sin(angle_rad);
-
-    for (auto& vertex : corners) 
-    {
-        vertex.x = cos_theta * vertex.x + sin_theta * vertex.y;
-        vertex.y = sin_theta * vertex.x + cos_theta * vertex.x;
-    }
-
-    return corners;
-}
-
-std::vector<glm::vec2> Entity::getEdges()
-{
-    std::vector<glm::vec2> corners = getCorners();
-    std::vector<glm::vec2> edges;
-
-    for (size_t i = 0; i < corners.size(); i++) 
-    {
-        edges.push_back(corners[(i + 1) % corners.size()] - corners[i]);
-    }
-
-    return edges;
-}
-
-std::vector<glm::vec2> Entity::getNormal() 
-{ 
-    std::vector<glm::vec2> edges = getEdges();
-    std::vector<glm::vec2> normals;
-
-    for (auto& edge : edges) 
-    {
-        normals.push_back(glm::vec2(-1.0f * edge.x, edge.y));
-    }
-
-    // normalize all the normals
-    for (auto& normal : normals) 
-    {
-        glm::normalize(normal);
-    }
-
-    return normals;
-}
-
-bool Entity::check_collision_SAT(Entity* other)
-{
-    std::vector<glm::vec2> self_corners = this->getCorners();
-    std::vector<glm::vec2> other_corners = other->getCorners();
-
-    std::vector<glm::vec2> self_normals = this->getNormal();
-    std::vector<glm::vec2> other_normals = other->getNormal();
-
-    std::vector<glm::vec2> axes;
-    axes.insert(axes.end(), self_normals.begin(), self_normals.end());
-    axes.insert(axes.end(), other_normals.begin(), other_normals.begin());
-
-
-    for (auto& axis : axes)
-    {
-
-    }
-}
-
-
-
-const void Entity::log_attributes() {
-    std::cout << "Velocity: " << m_velocity.x << " " << m_velocity.y << std::endl;
-    std::cout << "Acceleration: " << m_acceleration.x << " " << m_acceleration.y << std::endl;
-    std::cout << "Position: " << m_position.x << " " << m_position.y << std::endl;
-    std::cout << "Angle: " << m_angle << std::endl;
-    std::cout << std::endl;
-}
+// END OF REDUNDANT CODE?

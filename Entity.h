@@ -7,6 +7,7 @@
 #include <vector>
 
 enum AngleDirection { LEFT, RIGHT, NONE };
+enum GameStatus { CRASHED, LANDED, ACTIVE, START };
 
 class Entity
 {
@@ -27,8 +28,9 @@ private:
 	int m_fuel;
 	float m_width;
 	float m_height;
-	float m_new_width;
-	float m_new_height;
+
+	bool m_use_acceleration;
+	GameStatus m_status;
 
 	// ----- TEXTURES ----- //
 	GLuint m_texture_id;
@@ -37,6 +39,7 @@ private:
 
 
 	// ----- COLLISIONS ----- //
+	// redundant and useless bools but we keep em
 	bool m_collided_top = false;
 	bool m_collided_bottom = false;
 	bool m_collided_left = false;
@@ -53,7 +56,7 @@ public:
 
 	// ----- METHODS ----- //
 	Entity();
-	Entity(GLuint texture_id, float speed, glm::vec3 acceleration);
+	Entity(GLuint texture_id, float speed, glm::vec3 acceleration, bool use_accel, GameStatus status);
 	~Entity();
 
 	const void log_attributes();
@@ -74,7 +77,6 @@ public:
 	bool check_collision_SAT(Entity* other);
 
 
-
 	// ----- GETTERS ----- //
 	glm::vec3 const get_position()     const { return m_position; }
 	glm::vec3 const get_velocity()     const { return m_velocity; }
@@ -83,7 +85,8 @@ public:
 	glm::vec3 const get_scale()        const { return m_scale; }
 	GLuint    const get_texture_id()   const { return m_texture_id; }
 	int	      const get_fuel()		   const { return m_fuel; }
-	float     const get_angle()		   const { return m_angle;  }
+	float     const get_angle()		   const { return m_angle; }
+	GameStatus const get_status()	   const { return m_status; }
 
 	// ----- SETTERS ----- //
 	void const set_position(glm::vec3 new_position) { m_position = new_position; }
@@ -92,6 +95,7 @@ public:
 	void const set_movement(glm::vec3 new_movement) { m_movement = new_movement; }
 	void const set_scale(glm::vec3 new_scale) { m_scale = new_scale; }
 	void const set_texture_id(GLuint new_texture_id) { m_texture_id = new_texture_id; }
+	void const set_status(GameStatus new_status) { m_status = new_status;  }
 };
 
 #endif // ENTITY_H
