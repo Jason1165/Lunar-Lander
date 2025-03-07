@@ -61,15 +61,7 @@ Entity::~Entity() {}
 
 void Entity::update(float delta_time, Entity* collidable_entities, int collidable_entity_count)
 {
-
-    //m_collided_top = false;
-    //m_collided_bottom = false;
-    //m_collided_left = false;
-    //m_collided_right = false;
-
     // check for in bounds
-
-
 
 
     // check for collision
@@ -92,12 +84,8 @@ void Entity::update(float delta_time, Entity* collidable_entities, int collidabl
         m_velocity += m_acceleration * delta_time;
 
         m_position.y += m_velocity.y * delta_time;
-        // check collision on y
-        //check_collision_y(collidable_entities, collidable_entity_count); // this prevents further movement up/dowm
 
         m_position.x += m_velocity.x * delta_time;
-        // check collision on x
-        //check_collision_x(collidable_entities, collidable_entity_count); // this prevents further left/right movement
     }
 
     // put the updates in
@@ -144,7 +132,7 @@ void Entity::rotate(float delta_time, AngleDirection direction)
     }
 }
 
-void Entity::updateFuel(float delta_time, bool using_fuel)
+void Entity::update_fuel(float delta_time, bool using_fuel)
 {
     // reset acceleration matrix
     m_acceleration = glm::vec3(0.0f);
@@ -159,15 +147,14 @@ void Entity::updateFuel(float delta_time, bool using_fuel)
 }
 
 
-void Entity::setDimensions(float x, float y) {
+void Entity::set_dimensions(float x, float y) {
     m_height = y;
     m_width = x;
 }
 
-
 // ----- COLLISION STUFF ----- //
 
-std::vector<glm::vec2> Entity::getCorners()
+std::vector<glm::vec2> Entity::get_corners()
 {
     std::vector<glm::vec2> corners;
     float half_width = m_width / 2.0f;
@@ -198,9 +185,9 @@ std::vector<glm::vec2> Entity::getCorners()
     return corners;
 }
 
-std::vector<glm::vec2> Entity::getEdges()
+std::vector<glm::vec2> Entity::get_edges()
 {
-    std::vector<glm::vec2> corners = getCorners();
+    std::vector<glm::vec2> corners = get_corners();
     std::vector<glm::vec2> edges;
 
     for (size_t i = 0; i < corners.size(); i++)
@@ -211,9 +198,9 @@ std::vector<glm::vec2> Entity::getEdges()
     return edges;
 }
 
-std::vector<glm::vec2> Entity::getNormal()
+std::vector<glm::vec2> Entity::get_normals()
 {
-    std::vector<glm::vec2> edges = getEdges();
+    std::vector<glm::vec2> edges = get_edges();
     std::vector<glm::vec2> normals;
 
     for (auto& edge : edges)
@@ -233,12 +220,12 @@ std::vector<glm::vec2> Entity::getNormal()
 bool Entity::check_collision_SAT(Entity* other)
 {
     // get the entity corners to project onto the axes
-    std::vector<glm::vec2> self_corners = this->getCorners();
-    std::vector<glm::vec2> other_corners = other->getCorners();
+    std::vector<glm::vec2> self_corners = this->get_corners();
+    std::vector<glm::vec2> other_corners = other->get_corners();
 
     // get the axes
-    std::vector<glm::vec2> self_normals = this->getNormal();
-    std::vector<glm::vec2> other_normals = other->getNormal();
+    std::vector<glm::vec2> self_normals = this->get_normals();
+    std::vector<glm::vec2> other_normals = other->get_normals();
 
     // append axes to one list
     std::vector<glm::vec2> axes;
@@ -281,8 +268,8 @@ void Entity::valid_collision(Entity* other) {
     // we need to check that the x coordinates are in the range of the start and end of the platform
     // y coordinate should ideally be above the maximum y of the platform 
     // but since im not resetting the y-coor to account for clippin(g it may end up lower
-    std::vector<glm::vec2> corners = this->getCorners();
-    std::vector<glm::vec2> other_corners = other->getCorners();
+    std::vector<glm::vec2> corners = this->get_corners();
+    std::vector<glm::vec2> other_corners = other->get_corners();
 
     float minThis = INFINITY, maxThis = -INFINITY;
     float minOther = INFINITY, maxOther = -INFINITY;
@@ -334,92 +321,9 @@ const void Entity::log_attributes() {
 
 
 const void Entity::log_corners() {
-    std::vector<glm::vec2> corners = getCorners();
+    std::vector<glm::vec2> corners = get_corners();
     for (size_t i = 0; i < corners.size(); i++) {
         std::cout << "Corner: " << i << " x: " << corners[i].x << " y: " << corners[i].y << std::endl;
     }
     std::cout << std::endl;
 }
-
-// START OF REDUNDANT CODE?
-
-bool const Entity::check_collision(Entity* other) const
-{
-    float x_distance = fabs(m_position.x - other->m_position.x) - ((m_width + other->m_width) / 2.0f);
-    float y_distance = fabs(m_position.y - other->m_position.y) - ((m_height + other->m_height) / 2.0f);
-    return x_distance < 0.0f && y_distance < 0.0f;
-}
-
-void const Entity::check_collision_y(Entity* collidable_entities, int collidable_entity_count)
-{
-    for (int i = 0; i < collidable_entity_count; i++)
-    {
-        Entity* collidable_entity = &collidable_entities[i];
-
-        if (check_collision(collidable_entity))
-        {
-            float y_dist = fabs(m_position.y - collidable_entity->m_position.y);
-            float y_overlap = fabs(y_dist - (m_height / 2.0f) - (collidable_entity->m_height / 2.0f));
-            if (m_velocity.y > 0)
-            {
-                m_position.y -= y_overlap;
-                m_velocity.y = 0;
-
-                m_velocity.x = 0; // also stop horizontal movement when crashing
-
-                // Collision!
-                m_collided_top = true;
-            }
-            else if (m_velocity.y < 0)
-            {
-                m_position.y += y_overlap;
-                m_velocity.y = 0;
-
-                m_velocity.x = 0; // also stop horizontal movement when crashing
-
-
-                // Collision!
-                m_collided_bottom = true;
-            }
-        }
-    }
-}
-
-
-void const Entity::check_collision_x(Entity* collidable_entities, int collidable_entity_count)
-{
-    for (int i = 0; i < collidable_entity_count; i++)
-    {
-        Entity* collidable_entity = &collidable_entities[i];
-
-        if (check_collision(collidable_entity))
-        {
-            float x_distance = fabs(m_position.x - collidable_entity->m_position.x);
-            float x_overlap = fabs(x_distance - (m_width / 2.0f) - (collidable_entity->m_width / 2.0f));
-            if (m_velocity.x > 0)
-            {
-                m_position.x -= x_overlap;
-                m_velocity.x = 0;
-
-                m_velocity.y = 0; // also stop vertical movement when crashing
-
-
-                // Collision!
-                m_collided_right = true;
-
-            }
-            else if (m_velocity.x < 0)
-            {
-                m_position.x += x_overlap;
-                m_velocity.x = 0;
-
-                m_velocity.y = 0; // also stop vertical movement when crashing
-
-                // Collision!
-                m_collided_left = true;
-            }
-        }
-    }
-}
-
-// END OF REDUNDANT CODE?

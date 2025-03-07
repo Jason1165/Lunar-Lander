@@ -251,7 +251,7 @@ void initialise()
     g_game_state.ship->set_movement(glm::vec3(0.0f, 0.0f, 0.0f));
     g_game_state.ship->set_scale(glm::vec3(1.0833f, 0.5f, 1.0f));
     g_game_state.ship->set_position(glm::vec3(-4.5f, 3.5f, 1.0f));
-    g_game_state.ship->setDimensions(g_game_state.ship->get_scale().x, g_game_state.ship->get_scale().y);
+    g_game_state.ship->set_dimensions(g_game_state.ship->get_scale().x, g_game_state.ship->get_scale().y);
     g_game_state.ship->update(0.0f, nullptr, 0);
 
 
@@ -264,7 +264,7 @@ void initialise()
     for (int i = 0; i < NUM_PLATFORMS; i++)
     {
         g_game_state.platforms[i].update(0.0f, nullptr, 0);
-        g_game_state.platforms[i].setDimensions(g_game_state.platforms[i].get_scale().x, g_game_state.platforms[i].get_scale().y);
+        g_game_state.platforms[i].set_dimensions(g_game_state.platforms[i].get_scale().x, g_game_state.platforms[i].get_scale().y);
     }
 
     // ----- GENERAL ----- //
@@ -338,7 +338,7 @@ void update()
         }
         
         // update acceleration and fuel usage
-        g_game_state.ship->updateFuel(FIXED_TIMESTEP, g_using_fuel);
+        g_game_state.ship->update_fuel(FIXED_TIMESTEP, g_using_fuel);
 
         // update the position after all of that
         g_game_state.ship->update(FIXED_TIMESTEP, g_game_state.platforms, NUM_PLATFORMS);
