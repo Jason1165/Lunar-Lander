@@ -7,7 +7,7 @@
 #include <vector>
 
 enum AngleDirection { LEFT, RIGHT, NONE };
-enum GameStatus { CRASHED, LANDED, ACTIVE, START };
+enum EntityStatus { CRASHED, LANDED, ACTIVE, START };
 
 class Entity
 {
@@ -30,7 +30,9 @@ private:
 	float m_height;
 
 	bool m_use_acceleration;
-	GameStatus m_status;
+	
+	
+	EntityStatus m_status;
 
 	// ----- TEXTURES ----- //
 	GLuint m_texture_id;
@@ -56,14 +58,19 @@ public:
 
 	// ----- METHODS ----- //
 	Entity();
-	Entity(GLuint texture_id, float speed, glm::vec3 acceleration, bool use_accel, GameStatus status);
+	Entity(GLuint texture_id, float speed, glm::vec3 acceleration, bool use_accel, EntityStatus status);
 	~Entity();
 
+	// logs
 	const void log_attributes();
+	const void log_corners();
+
 	void update(float delta_time, Entity* collidable_entities, int collidable_entity_count);
 	void render(ShaderProgram* program);
 	void rotate(float delta_time, AngleDirection dir);
 	void updateFuel(float delta_time, bool using_fuel);
+
+	// Not used
 	bool const check_collision(Entity* other) const;
 	void const check_collision_y(Entity* collidable_entities, int collidable_entity_count);
 	void const check_collision_x(Entity* collidable_entities, int collidable_entity_count);
@@ -76,6 +83,8 @@ public:
 	std::vector<glm::vec2> getNormal();
 	bool check_collision_SAT(Entity* other);
 
+	void valid_collision(Entity* other);
+
 
 	// ----- GETTERS ----- //
 	glm::vec3 const get_position()     const { return m_position; }
@@ -86,7 +95,7 @@ public:
 	GLuint    const get_texture_id()   const { return m_texture_id; }
 	int	      const get_fuel()		   const { return m_fuel; }
 	float     const get_angle()		   const { return m_angle; }
-	GameStatus const get_status()	   const { return m_status; }
+	EntityStatus const get_status()	   const { return m_status; }
 
 	// ----- SETTERS ----- //
 	void const set_position(glm::vec3 new_position) { m_position = new_position; }
@@ -95,7 +104,7 @@ public:
 	void const set_movement(glm::vec3 new_movement) { m_movement = new_movement; }
 	void const set_scale(glm::vec3 new_scale) { m_scale = new_scale; }
 	void const set_texture_id(GLuint new_texture_id) { m_texture_id = new_texture_id; }
-	void const set_status(GameStatus new_status) { m_status = new_status;  }
+	void const set_status(EntityStatus new_status) { m_status = new_status;  }
 };
 
 #endif // ENTITY_H

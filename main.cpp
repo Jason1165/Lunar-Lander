@@ -246,7 +246,7 @@ void initialise()
         5.0f,                               // speed
         glm::vec3(0.0f, 0.0f, 0.0f),        // acceleration vector
         true,                               // use acceleration
-        START                               // GameStatus
+        START                               // EntityStatus
     );
     g_game_state.ship->set_movement(glm::vec3(0.0f, 0.0f, 0.0f));
     g_game_state.ship->set_scale(glm::vec3(1.0833f, 0.5f, 1.0f));
@@ -260,6 +260,7 @@ void initialise()
     g_game_state.platforms[0] = Entity(castle_texture_id, 0.0f, glm::vec3(0.0f), false, ACTIVE);
     g_game_state.platforms[0].set_position(glm::vec3(4.0f, -3.25f, 1.0f));
     g_game_state.platforms[0].set_scale(glm::vec3(2.0f, 1.0f, 1.0f));
+
     for (int i = 0; i < NUM_PLATFORMS; i++)
     {
         g_game_state.platforms[i].update(0.0f, nullptr, 0);
@@ -374,6 +375,12 @@ void render()
     {
         g_game_state.platforms[i].render(&g_shader_program);
     }
+
+    if (g_game_state.ship->get_status() == START)
+    {
+        draw_text(&g_shader_program, g_font_texture_id, "PRESS SPACE TO BEGIN", 0.25f, 0.05f, glm::vec3(-1.2f, 0.0f, 0.0f));
+    }
+
 
     SDL_GL_SwapWindow(g_display_window);
 }

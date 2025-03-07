@@ -37,7 +37,7 @@ Entity::Entity() :
 
 // Parametereized constructor
 // current constructor used by the ship
-Entity::Entity(GLuint texture_id, float speed, glm::vec3 acceleration, bool use_accel, GameStatus status) :
+Entity::Entity(GLuint texture_id, float speed, glm::vec3 acceleration, bool use_accel, EntityStatus status) :
     m_position(0.0f),
     m_movement(0.0f),
     m_scale(1.0f, 1.0f, 1.0f),
@@ -67,15 +67,22 @@ void Entity::update(float delta_time, Entity* collidable_entities, int collidabl
     //m_collided_left = false;
     //m_collided_right = false;
 
+    // check for in bounds
+
+
+
+
+    // check for collision
     for (int i = 0; i < collidable_entity_count; i++)
     {
         if (check_collision_SAT(&collidable_entities[i])) {
             m_velocity = glm::vec3(0.0f); // pause all velocities
+            valid_collision(&collidable_entities[i]);
             return;
         }
     }
 
-
+    // we playing?
     if (m_status == ACTIVE && !m_use_acceleration) {
         m_velocity.x = m_movement.x * m_speed;
         m_velocity.y = m_movement.y * m_speed;
@@ -225,18 +232,23 @@ std::vector<glm::vec2> Entity::getNormal()
 
 bool Entity::check_collision_SAT(Entity* other)
 {
+    // get the entity corners to project onto the axes
     std::vector<glm::vec2> self_corners = this->getCorners();
     std::vector<glm::vec2> other_corners = other->getCorners();
 
+    // get the axes
     std::vector<glm::vec2> self_normals = this->getNormal();
     std::vector<glm::vec2> other_normals = other->getNormal();
 
+    // append axes to one list
     std::vector<glm::vec2> axes;
     axes.insert(axes.end(), self_normals.begin(), self_normals.end());
     axes.insert(axes.end(), other_normals.begin(), other_normals.end());
 
+    // for every axis
     for (auto& axis : axes)
     {
+        // calculate the min and max projection onto an axis for each object
         float minA = INFINITY, maxA = -INFINITY;
         float minB = INFINITY, maxB = -INFINITY;
 
@@ -254,12 +266,59 @@ bool Entity::check_collision_SAT(Entity* other)
             maxB = std::max(maxB, proj);  
         }
 
+        // if an axis is found no collision
         if (maxA < minB || maxB < minA) {
             return false;  
         }
     }
 
+    // no valid axis so collision
     return true;  
+}
+
+void Entity::valid_collision(Entity* other) {
+    // we want collison on top of the platform and since SAT checks for all the other collisions
+    // we need to check that the x coordinates are in the range of the start and end of the platform
+    // y coordinate should ideally be above the maximum y of the platform 
+    // but since im not resetting the y-coor to account for clippin(g it may end up lower
+    std::vector<glm::vec2> corners = this->getCorners();
+    std::vector<glm::vec2> other_corners = other->getCorners();
+
+    float minThis = INFINITY, maxThis = -INFINITY;
+    float minOther = INFINITY, maxOther = -INFINITY;
+
+    for (auto& corner : corners) {
+        minThis = std::min(corner.x, minThis);
+        maxThis = std::max(corner.x, maxThis);
+    }
+
+    for (auto& corner : other_corners) {
+        minOther = std::min(corner.x, minOther);
+        maxOther = std::max(corner.x, maxOther);
+    }
+
+    if (!(minThis >= minOther && maxThis <= maxOther)) {
+        this->set_status(CRASHED);
+        return;
+    }
+
+    // check that the angle at landing is within a tolerance of 90 degrees
+    if (abs(int(m_angle) % 360 - 90) > 10) 
+    { 
+        this->set_status(CRASHED);
+        return;
+    }
+
+    // check that velocity is not to extreme so we're not destroying our thrusters
+    // chosen value is less than fabs(0.7), roughly cos(theta/4) or sin(theta/4)
+    if (fabs(m_velocity.x) >= 0.7f || fabs(m_velocity.y) >= 0.7f)
+    {
+        this->set_status(CRASHED);
+        return;
+    }
+
+    // pass all cases so successful collision
+    this->set_status(LANDED);
 }
 
 // ----- DEBUG LOG ----- //
@@ -273,6 +332,14 @@ const void Entity::log_attributes() {
     std::cout << std::endl;
 }
 
+
+const void Entity::log_corners() {
+    std::vector<glm::vec2> corners = getCorners();
+    for (size_t i = 0; i < corners.size(); i++) {
+        std::cout << "Corner: " << i << " x: " << corners[i].x << " y: " << corners[i].y << std::endl;
+    }
+    std::cout << std::endl;
+}
 
 // START OF REDUNDANT CODE?
 
