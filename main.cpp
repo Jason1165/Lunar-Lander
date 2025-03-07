@@ -28,12 +28,12 @@
 
 // ----- CONSTANTS ----- //
 // ----- DONT CHANGE ----- //
-constexpr float WINDOW_MULTI = 1.0f;
+constexpr float WINDOW_MULTI = 2.0f;
 constexpr int WINDOW_WIDTH = 640 * WINDOW_MULTI,
 WINDOW_HEIGHT = 480 * WINDOW_MULTI;
 
-constexpr float BG_RED = 1.0f,
-BG_GREEN = 1.0f,
+constexpr float BG_RED = 0.0f,
+BG_GREEN = 0.0f,
 BG_BLUE = 1.0f,
 BG_OPACITY = 1.0f;
 
@@ -60,6 +60,7 @@ constexpr char PLATFORM1_FILEPATH[] = "assets/castle.png"; // 256 * 128
 
 // ----- STRUCTS AND ENUMS ----- //
 enum AppStatus { RUNNING, TERMINATED };
+enum FilterType {NEAREST, LINEAR }; // trying to fix the glitchy rendering but whatever
 
 struct GameState
 {
@@ -97,10 +98,11 @@ GLuint load_texture(const char* filepath);
 
 
 // ---- GENERAL FUNCTIONS ---- //
-GLuint load_texture(const char* filepath)
+GLuint load_texture(const char* filepath, FilterType filterType)
 {
     int width, height, number_of_components;
-    unsigned char* image = stbi_load(filepath, &width, &height, &number_of_components, STBI_rgb_alpha);
+    unsigned char* image = stbi_load(filepath, &width, &height, &number_of_components,
+        STBI_rgb_alpha);
 
     if (image == NULL)
     {
@@ -111,11 +113,13 @@ GLuint load_texture(const char* filepath)
     GLuint textureID;
     glGenTextures(NUMBER_OF_TEXTURES, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
-    glTexImage2D(GL_TEXTURE_2D, LEVEL_OF_DETAIL, GL_RGBA, width, height, TEXTURE_BORDER, GL_RGBA, GL_UNSIGNED_BYTE, image);
+    glTexImage2D(GL_TEXTURE_2D, LEVEL_OF_DETAIL, GL_RGBA, width, height, TEXTURE_BORDER,
+        GL_RGBA, GL_UNSIGNED_BYTE, image);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+        filterType == NEAREST ? GL_NEAREST : GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
+        filterType == NEAREST ? GL_NEAREST : GL_LINEAR);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -230,9 +234,9 @@ void initialise()
     glClearColor(BG_RED, BG_GREEN, BG_BLUE, BG_OPACITY);
 
     // TEXTURES 
-    GLuint ship_texture_id = load_texture(SHIP_FILEPATH);
-    GLuint castle_texture_id = load_texture(PLATFORM1_FILEPATH);
-    g_font_texture_id = load_texture(FONTSHEET_FILEPATH);
+    GLuint ship_texture_id = load_texture(SHIP_FILEPATH, NEAREST);
+    GLuint castle_texture_id = load_texture(PLATFORM1_FILEPATH, NEAREST);
+    g_font_texture_id = load_texture(FONTSHEET_FILEPATH, NEAREST);
 
     // ----- STUFF TO INITIALISE ----- //
 
@@ -245,6 +249,7 @@ void initialise()
     g_game_state.ship->set_movement(glm::vec3(0.0f, 0.0f, 0.0f));
     g_game_state.ship->set_scale(glm::vec3(1.0833f, 0.5f, 1.0f));
     g_game_state.ship->set_position(glm::vec3(-4.5f, 3.5f, 1.0f));
+    g_game_state.ship->setDimensions(g_game_state.ship->get_scale().x, g_game_state.ship->get_scale().y);
 
 
     // ----- PLATFORMS ----- //
@@ -252,7 +257,10 @@ void initialise()
     g_game_state.platforms[0] = Entity(castle_texture_id, 0.0f, glm::vec3(0.0f));
     g_game_state.platforms[0].set_position(glm::vec3(4.0f, -3.25f, 1.0f));
     g_game_state.platforms[0].set_scale(glm::vec3(2.0f, 1.0f, 1.0f));
-    g_game_state.platforms[0].update(0.0f);
+    for (int i = 0; i < NUM_PLATFORMS; i++)
+    {
+        g_game_state.platforms[i].update(0.0f, nullptr, 0);
+    }
 
     // ----- GENERAL ----- //
     glEnable(GL_BLEND);
@@ -324,11 +332,11 @@ void update()
         g_game_state.ship->updateFuel(FIXED_TIMESTEP, g_using_fuel);
 
         // update the position after all of that
-        g_game_state.ship->update(FIXED_TIMESTEP);
+        g_game_state.ship->update(FIXED_TIMESTEP, g_game_state.platforms, NUM_PLATFORMS);
 
         // decrement
         delta_time -= FIXED_TIMESTEP;
-        //g_game_state.ship->log_attributes();
+        g_game_state.ship->log_attributes();
     }
 
     g_accumulator = delta_time;
@@ -343,10 +351,13 @@ void render()
     glm::vec3 curr_velocity = g_game_state.ship->get_velocity();
     std::string x_velocity = "X_SPEED " + std::to_string(int(curr_velocity.x*100));
     std::string y_velocity = "Y_SPEED: " + std::to_string(int(curr_velocity.y*100));
+    std::string angle_str = "ANGLE: " + std::to_string(int(g_game_state.ship->get_angle()));
+
     // render text
     draw_text(&g_shader_program, g_font_texture_id, fuel_string, 0.25f, 0.05f, glm::vec3(3.0f, 3.5f, 0.0f));
     draw_text(&g_shader_program, g_font_texture_id, x_velocity, 0.25f, 0.05f, glm::vec3(3.0f, 3.25f, 0.0f));
     draw_text(&g_shader_program, g_font_texture_id, y_velocity, 0.25f, 0.05f, glm::vec3(3.0f, 3.0f, 0.0f));
+    draw_text(&g_shader_program, g_font_texture_id, angle_str, 0.25f, 0.05f, glm::vec3(3.0f, 2.75f, 0.0f));
 
 
     // THINGS TO RENDER //

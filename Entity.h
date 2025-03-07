@@ -4,6 +4,8 @@
 #include "glm/glm.hpp"
 #include "ShaderProgram.h"
 
+#include <vector>
+
 enum AngleDirection { LEFT, RIGHT, NONE };
 
 class Entity
@@ -22,7 +24,11 @@ private:
 
 	float m_speed;
 	float m_angle; // angle accumulator
-	float m_fuel;
+	int m_fuel;
+	float m_width;
+	float m_height;
+	float m_new_width;
+	float m_new_height;
 
 	// ----- TEXTURES ----- //
 	GLuint m_texture_id;
@@ -31,6 +37,10 @@ private:
 
 
 	// ----- COLLISIONS ----- //
+	bool m_collided_top = false;
+	bool m_collided_bottom = false;
+	bool m_collided_left = false;
+	bool m_collided_right = false;
 
 
 public:
@@ -47,10 +57,23 @@ public:
 	~Entity();
 
 	const void log_attributes();
-	void update(float delta_time);
+	void update(float delta_time, Entity* collidable_entities, int collidable_entity_count);
 	void render(ShaderProgram* program);
 	void rotate(float delta_time, AngleDirection dir);
 	void updateFuel(float delta_time, bool using_fuel);
+	bool const check_collision(Entity* other) const;
+	void const check_collision_y(Entity* collidable_entities, int collidable_entity_count);
+	void const check_collision_x(Entity* collidable_entities, int collidable_entity_count);
+
+	void setDimensions(float x, float y);
+
+	// SAT collision cause box collisions are janky
+	std::vector<glm::vec2> getCorners();
+	std::vector<glm::vec2> getEdges();
+	std::vector<glm::vec2> getNormal();
+	bool check_collision_SAT(Entity* other);
+
+
 
 	// ----- GETTERS ----- //
 	glm::vec3 const get_position()     const { return m_position; }
@@ -60,6 +83,7 @@ public:
 	glm::vec3 const get_scale()        const { return m_scale; }
 	GLuint    const get_texture_id()   const { return m_texture_id; }
 	int	      const get_fuel()		   const { return m_fuel; }
+	float     const get_angle()		   const { return m_angle;  }
 
 	// ----- SETTERS ----- //
 	void const set_position(glm::vec3 new_position) { m_position = new_position; }
