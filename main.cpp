@@ -250,7 +250,7 @@ void initialise()
     );
     g_game_state.ship->set_movement(glm::vec3(0.0f, 0.0f, 0.0f));
     g_game_state.ship->set_scale(glm::vec3(1.0833f, 0.5f, 1.0f));
-    g_game_state.ship->set_position(glm::vec3(-4.5f, 3.5f, 1.0f));
+    g_game_state.ship->set_position(glm::vec3(-4.4f, 3.5f, 1.0f));
     g_game_state.ship->set_dimensions(g_game_state.ship->get_scale().x, g_game_state.ship->get_scale().y);
     g_game_state.ship->update(0.0f, nullptr, 0);
 
@@ -332,20 +332,21 @@ void update()
 
     while (delta_time >= FIXED_TIMESTEP)
     {
-        // update angle first
-        if (g_angle_dir != NONE) {
-            g_game_state.ship->rotate(FIXED_TIMESTEP, g_angle_dir);
+        // only update the game if the ship is moving
+        if (g_game_state.ship->get_status() == ACTIVE) {
+            // update angle first
+            if (g_angle_dir != NONE) {
+                g_game_state.ship->rotate(FIXED_TIMESTEP, g_angle_dir);
+            }
+
+            // update acceleration and fuel usage
+            g_game_state.ship->update_fuel(FIXED_TIMESTEP, g_using_fuel);
+
+            // update the position after all of that
+            g_game_state.ship->update(FIXED_TIMESTEP, g_game_state.platforms, NUM_PLATFORMS);
         }
-        
-        // update acceleration and fuel usage
-        g_game_state.ship->update_fuel(FIXED_TIMESTEP, g_using_fuel);
-
-        // update the position after all of that
-        g_game_state.ship->update(FIXED_TIMESTEP, g_game_state.platforms, NUM_PLATFORMS);
-
         // decrement
         delta_time -= FIXED_TIMESTEP;
-        //g_game_state.ship->log_attributes();
     }
 
     g_accumulator = delta_time;
@@ -370,15 +371,27 @@ void render()
 
 
     // THINGS TO RENDER //
+    // render all of these regardless of game state
+
     g_game_state.ship->render(&g_shader_program);
     for (int i = 0; i < NUM_PLATFORMS; i++) 
     {
         g_game_state.platforms[i].render(&g_shader_program);
     }
 
+    // render at start
     if (g_game_state.ship->get_status() == START)
     {
         draw_text(&g_shader_program, g_font_texture_id, "PRESS SPACE TO BEGIN", 0.25f, 0.05f, glm::vec3(-1.2f, 0.0f, 0.0f));
+    }
+    // render at collsion
+    if (g_game_state.ship->get_status() == CRASHED)
+    {
+        draw_text(&g_shader_program, g_font_texture_id, "MISSION FAILED", 0.25f, 0.05f, glm::vec3(-1.2f, 0.0f, 0.0f));
+    }
+    if (g_game_state.ship->get_status() == LANDED)
+    {
+        draw_text(&g_shader_program, g_font_texture_id, "MISSION ACCOMPLISHED", 0.25f, 0.05f, glm::vec3(-1.2f, 0.0f, 0.0f));
     }
 
 

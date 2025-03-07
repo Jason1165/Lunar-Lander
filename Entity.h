@@ -42,6 +42,15 @@ private:
 
 	// ----- COLLISIONS ----- //
 
+	// ----- METHODS ----- //
+	std::vector<glm::vec2> get_corners();
+	std::vector<glm::vec2> get_edges();
+	std::vector<glm::vec2> get_normals();
+
+	void valid_collision(Entity* other);
+	std::pair<float, float> get_min_max_x();
+	std::pair<float, float> get_min_max_y();
+
 
 public:
 	// ----- STATIC VARIABLES ----- //
@@ -68,12 +77,8 @@ public:
 	void set_dimensions(float x, float y);
 
 	// SAT collision cause box collisions are janky
-	std::vector<glm::vec2> get_corners();
-	std::vector<glm::vec2> get_edges();
-	std::vector<glm::vec2> get_normals();
-	bool check_collision_SAT(Entity* other);
 
-	void valid_collision(Entity* other);
+	bool check_collision_SAT(Entity* other);
 
 
 	// ----- GETTERS ----- //

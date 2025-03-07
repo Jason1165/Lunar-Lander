@@ -28,7 +28,7 @@ Entity::Entity() :
     m_speed(0.0f),
     m_rotation(0.0f, 0.0f, 1.0f),
     m_angle(0.0f),
-    m_fuel(3000),
+    m_fuel(500),
     m_width(0.0f),
     m_height(0.0f),
     m_use_acceleration(false),
@@ -48,7 +48,7 @@ Entity::Entity(GLuint texture_id, float speed, glm::vec3 acceleration, bool use_
     m_speed(speed),
     m_rotation(0.0f, 0.0f, 1.0f),
     m_angle(0.0f),
-    m_fuel(3000),
+    m_fuel(500),
     m_width(0.0f),
     m_height(0.0f),
     m_use_acceleration(use_accel),
@@ -62,6 +62,17 @@ Entity::~Entity() {}
 void Entity::update(float delta_time, Entity* collidable_entities, int collidable_entity_count)
 {
     // check for in bounds
+    std::pair<float, float> x_coors = this->get_min_max_x();
+    std::pair<float, float> y_coors = this->get_min_max_y();
+
+    if (x_coors.second > 5.0f || x_coors.first < -5.0f)
+    {
+        this->set_status(CRASHED);
+    }
+    if (y_coors.first < -3.75f)
+    {
+        this->set_status(CRASHED);
+    }
 
 
     // check for collision
@@ -263,26 +274,43 @@ bool Entity::check_collision_SAT(Entity* other)
     return true;  
 }
 
+// helper method to get min/max
+// used by valid collision and update
+std::pair<float, float> Entity::get_min_max_x() 
+{
+    std::vector<glm::vec2> corners = this->get_corners();
+    float mini = INFINITY, maxi = -INFINITY;
+    for (auto& vertex : corners) {
+        mini = glm::min(mini, vertex.x);
+        maxi = glm::max(maxi, vertex.x);
+    }
+    std::pair<float, float> val = std::make_pair(mini, maxi);
+    return val;
+}
+
+std::pair<float, float> Entity::get_min_max_y()
+{
+    std::vector<glm::vec2> corners = this->get_corners();
+    float mini = INFINITY, maxi = -INFINITY;
+    for (auto& vertex : corners) {
+        mini = glm::min(mini, vertex.y);
+        maxi = glm::max(maxi, vertex.y);
+    }
+    std::pair<float, float> val = std::make_pair(mini, maxi);
+    return val;
+}
+
 void Entity::valid_collision(Entity* other) {
     // we want collison on top of the platform and since SAT checks for all the other collisions
     // we need to check that the x coordinates are in the range of the start and end of the platform
     // y coordinate should ideally be above the maximum y of the platform 
     // but since im not resetting the y-coor to account for clippin(g it may end up lower
-    std::vector<glm::vec2> corners = this->get_corners();
-    std::vector<glm::vec2> other_corners = other->get_corners();
 
-    float minThis = INFINITY, maxThis = -INFINITY;
-    float minOther = INFINITY, maxOther = -INFINITY;
+    std::pair<float, float> this_pair = this->get_min_max_x();
+    std::pair<float, float> other_pair = other->get_min_max_x();
 
-    for (auto& corner : corners) {
-        minThis = std::min(corner.x, minThis);
-        maxThis = std::max(corner.x, maxThis);
-    }
-
-    for (auto& corner : other_corners) {
-        minOther = std::min(corner.x, minOther);
-        maxOther = std::max(corner.x, maxOther);
-    }
+    float minThis = this_pair.first, maxThis = this_pair.second;
+    float minOther = other_pair.first, maxOther = other_pair.second;
 
     if (!(minThis >= minOther && maxThis <= maxOther)) {
         this->set_status(CRASHED);
