@@ -39,8 +39,8 @@ private:
 
 	// ----- ANIMATIONS ----- //
 
-
 	// ----- COLLISIONS ----- //
+	bool m_enemy;
 
 	// ----- METHODS ----- //
 	std::vector<glm::vec2> get_corners();
@@ -62,7 +62,7 @@ public:
 
 	// ----- METHODS ----- //
 	Entity();
-	Entity(GLuint texture_id, float speed, glm::vec3 acceleration, bool use_accel, EntityStatus status);
+	Entity(GLuint texture_id, float speed, glm::vec3 acceleration, bool use_accel, EntityStatus status, bool enemy);
 	~Entity();
 
 	// logs
@@ -82,15 +82,16 @@ public:
 
 
 	// ----- GETTERS ----- //
-	glm::vec3		const	get_position()     const { return m_position; }
-	glm::vec3		const	get_velocity()     const { return m_velocity; }
-	glm::vec3		const	get_acceleration() const { return m_acceleration; }
-	glm::vec3		const	get_movement()     const { return m_movement; }
-	glm::vec3		const	get_scale()        const { return m_scale; }
-	GLuint			const	get_texture_id()   const { return m_texture_id; }
-	int				const	get_fuel()		   const { return m_fuel; }
-	float			const	get_angle()		   const { return m_angle; }
-	EntityStatus	const	get_status()	   const { return m_status; }
+	glm::vec3		const	get_position()		const { return m_position; }
+	glm::vec3		const	get_velocity()		const { return m_velocity; }
+	glm::vec3		const	get_acceleration()	const { return m_acceleration; }
+	glm::vec3		const	get_movement()		const { return m_movement; }
+	glm::vec3		const	get_scale()			const { return m_scale; }
+	GLuint			const	get_texture_id()	const { return m_texture_id; }
+	int				const	get_fuel()			const { return m_fuel; }
+	float			const	get_angle()			const { return m_angle; }
+	EntityStatus	const	get_status()		const { return m_status; }
+	bool			const	is_enemy()			const { return m_enemy;  }
 
 	// ----- SETTERS ----- //
 	void const set_position(glm::vec3 new_position) { m_position = new_position; }
@@ -100,6 +101,7 @@ public:
 	void const set_scale(glm::vec3 new_scale) { m_scale = new_scale; }
 	void const set_texture_id(GLuint new_texture_id) { m_texture_id = new_texture_id; }
 	void const set_status(EntityStatus new_status) { m_status = new_status;  }
+	void const set_fuel(int new_fuel) { m_fuel = new_fuel; }
 };
 
 #endif // ENTITY_H

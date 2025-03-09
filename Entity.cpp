@@ -1,3 +1,13 @@
+/**
+* Author: Jason Lin
+* Assignment: Lunar Lander
+* Date due: 2025-3-15, 11:59pm
+* I pledge that I have completed this assignment without
+* collaborating with anyone else, in conformance with the
+* NYU School of Engineering Policies and Procedures on
+* Academic Misconduct.
+**/
+
 #define GL_SILENCE_DEPRECATION
 #define STB_IMAGE_IMPLEMENTATION
 #define LOG(argument) std::cout << argument << '\n'
@@ -28,31 +38,33 @@ Entity::Entity() :
     m_speed(0.0f),
     m_rotation(0.0f, 0.0f, 1.0f),
     m_angle(0.0f),
-    m_fuel(500),
+    m_fuel(1000),
     m_width(0.0f),
     m_height(0.0f),
     m_use_acceleration(false),
-    m_status(START)
+    m_status(START),
+    m_enemy(false)
 { }
 
 // Parametereized constructor
 // current constructor used by the ship
-Entity::Entity(GLuint texture_id, float speed, glm::vec3 acceleration, bool use_accel, EntityStatus status) :
+Entity::Entity(GLuint texture_id, float speed, glm::vec3 acceleration, bool use_accel, EntityStatus status, bool enemy) :
     m_position(0.0f),
     m_movement(0.0f),
     m_scale(1.0f, 1.0f, 1.0f),
     m_model_matrix(1.0f),
     m_velocity(0.0f),
-    m_texture_id(texture_id),
-    m_acceleration(acceleration),
-    m_speed(speed),
     m_rotation(0.0f, 0.0f, 1.0f),
     m_angle(0.0f),
-    m_fuel(500),
+    m_fuel(1000),
     m_width(0.0f),
     m_height(0.0f),
+    m_texture_id(texture_id),
+    m_speed(speed),
+    m_acceleration(acceleration),
     m_use_acceleration(use_accel),
-    m_status(status)
+    m_status(status),
+    m_enemy(enemy)
 { }
 
 
@@ -61,11 +73,11 @@ Entity::~Entity() {}
 
 void Entity::update(float delta_time, Entity* collidable_entities, int collidable_entity_count)
 {
-    // check for in bounds
+    // check for in bounds of screen
     std::pair<float, float> x_coors = this->get_min_max_x();
     std::pair<float, float> y_coors = this->get_min_max_y();
 
-    if (x_coors.second > 5.0f || x_coors.first < -5.0f)
+    if (x_coors.second > 5.2f || x_coors.first < -5.2f)
     {
         this->set_status(CRASHED);
     }
@@ -74,12 +86,16 @@ void Entity::update(float delta_time, Entity* collidable_entities, int collidabl
         this->set_status(CRASHED);
     }
 
-
     // check for collision
     for (int i = 0; i < collidable_entity_count; i++)
-    {
+    {   
         if (check_collision_SAT(&collidable_entities[i])) {
             m_velocity = glm::vec3(0.0f); // pause all velocities
+            if (collidable_entities[i].is_enemy()) 
+            {
+                this->set_status(CRASHED);
+                return;
+            }
             valid_collision(&collidable_entities[i]);
             return;
         }
@@ -93,10 +109,14 @@ void Entity::update(float delta_time, Entity* collidable_entities, int collidabl
     if (m_status == ACTIVE && m_use_acceleration) {
         // adding gravity
         m_velocity += m_acceleration * delta_time;
-
-        m_position.y += m_velocity.y * delta_time;
-
-        m_position.x += m_velocity.x * delta_time;
+    }
+    m_position.y += m_velocity.y * delta_time;
+    m_position.x += m_velocity.x * delta_time;
+    if (m_enemy) {
+        if (m_position.x < -6.0f)
+        {
+            m_position.x = 6.0f;
+        }
     }
 
     // put the updates in

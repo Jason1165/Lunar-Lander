@@ -1,4 +1,14 @@
-﻿#define LOG(argument) std::cout << argument << '\n'
+﻿/**
+* Author: Jason Lin
+* Assignment: Lunar Lander
+* Date due: 2025-3-15, 11:59pm
+* I pledge that I have completed this assignment without
+* collaborating with anyone else, in conformance with the
+* NYU School of Engineering Policies and Procedures on
+* Academic Misconduct.
+**/
+
+#define LOG(argument) std::cout << argument << '\n'
 #define STB_IMAGE_IMPLEMENTATION
 #define GL_SILENCE_DEPRECATION
 #define GL_GLEXT_PROTOTYPES 1
@@ -19,6 +29,7 @@
 #include <vector>
 #include "Entity.h"
 
+
 // ----- SOURCES ----- //
 // Atari font sheet, adapated for this project: https://en.wikipedia.org/wiki/Atari_ST_character_set
 // Ship in a Bottle (SHIP) by Laura Brown, adapted for this project: https://asciiartist.com/ldb/transportationtravelascii.txt
@@ -33,9 +44,9 @@ constexpr int WINDOW_WIDTH = 640 * WINDOW_MULTI,
 WINDOW_HEIGHT = 480 * WINDOW_MULTI;
 
 constexpr float BG_RED = 0.0f,
-BG_GREEN = 0.0f,
-BG_BLUE = 1.0f,
-BG_OPACITY = 1.0f;
+BG_GREEN = 83.0f / 255.0f,
+BG_BLUE = 132.0f / 255.0f,
+BG_OPACITY = 165.0f / 255.0f;
 
 constexpr int VIEWPORT_X = 0,
 VIEWPORT_Y = 0,
@@ -54,9 +65,11 @@ TEXTURE_BORDER = 0;
 
 // ----- OBJECT CONSTANTS ----- //
 GLuint g_font_texture_id;
-constexpr char SHIP_FILEPATH[] = "assets/bottle_ship_flip.png"; // 208 * 96 13:6
-constexpr char FONTSHEET_FILEPATH[] = "assets/modified_atari_font.png"; // 256 * 256 
-constexpr char PLATFORM1_FILEPATH[] = "assets/castle.png"; // 256 * 128
+constexpr char SHIP_FILEPATH[] = "assets/bottle_ship_flip.png"; // 208 x 96 13:6
+constexpr char FONTSHEET_FILEPATH[] = "assets/modified_atari_font.png"; // 256 x 256 
+constexpr char PLATFORM1_FILEPATH[] = "assets/castle.png"; // 256 x 128 
+constexpr char SHARK_FILEPATH[] = "assets/shark.png"; // 424 x 160 53: 20
+constexpr char TOWER_FILEPATH[] = "assets/tower.png"; // 96 x 128 3:4
 
 // ----- STRUCTS AND ENUMS ----- //
 enum AppStatus { RUNNING, TERMINATED };
@@ -71,7 +84,7 @@ struct GameState
 // ----- GAME CONSTANTS ----- //
 constexpr int FONTBANK_ROWS = 8;
 constexpr int FONTBANK_COLS = 16;
-constexpr int NUM_PLATFORMS = 1;
+constexpr int NUM_PLATFORMS = 3;
 
 // ----- VARIABLES ----- //
 GameState g_game_state;
@@ -94,8 +107,6 @@ void render();
 void shutdown();
 
 GLuint load_texture(const char* filepath);
-
-
 
 // ---- GENERAL FUNCTIONS ---- //
 GLuint load_texture(const char* filepath, FilterType filterType)
@@ -236,6 +247,8 @@ void initialise()
     // TEXTURES 
     GLuint ship_texture_id = load_texture(SHIP_FILEPATH, NEAREST);
     GLuint castle_texture_id = load_texture(PLATFORM1_FILEPATH, NEAREST);
+    GLuint shark_texture_id = load_texture(SHARK_FILEPATH, NEAREST);
+    GLuint tower_texture_id = load_texture(TOWER_FILEPATH, NEAREST);
     g_font_texture_id = load_texture(FONTSHEET_FILEPATH, NEAREST);
 
     // ----- STUFF TO INITIALISE ----- //
@@ -243,11 +256,13 @@ void initialise()
     // ----- SHIP ----- //
     g_game_state.ship = new Entity(
         ship_texture_id,                    // texture_id
-        5.0f,                               // speed
+        0.0f,                               // speed
         glm::vec3(0.0f, 0.0f, 0.0f),        // acceleration vector
         true,                               // use acceleration
-        START                               // EntityStatus
+        START,                              // EntityStatus
+        false                               // not enemy
     );
+
     g_game_state.ship->set_movement(glm::vec3(0.0f, 0.0f, 0.0f));
     g_game_state.ship->set_scale(glm::vec3(1.0833f, 0.5f, 1.0f));
     g_game_state.ship->set_position(glm::vec3(-4.4f, 3.5f, 1.0f));
@@ -257,9 +272,45 @@ void initialise()
 
     // ----- PLATFORMS ----- //
     g_game_state.platforms = new Entity[NUM_PLATFORMS];
-    g_game_state.platforms[0] = Entity(castle_texture_id, 0.0f, glm::vec3(0.0f), false, ACTIVE);
-    g_game_state.platforms[0].set_position(glm::vec3(4.0f, -3.25f, 1.0f));
+
+    // castle
+    g_game_state.platforms[0] = Entity(
+        castle_texture_id,                  // texture id
+        0.0f,                               // speed
+        glm::vec3(0.0f),                    // acceleration
+        false,                              // uses acceleration
+        ACTIVE,                             // EntityStatus
+        false                               // landable platform so not enemy
+    );
+    g_game_state.platforms[0].set_position(glm::vec3(3.9f, -3.20f, 1.0f));
     g_game_state.platforms[0].set_scale(glm::vec3(2.0f, 1.0f, 1.0f));
+
+    // shark
+    g_game_state.platforms[1] = Entity(
+        shark_texture_id,                   // texture id
+        1.0f,                               // speed
+        glm::vec3(0.0f),                    // acceleration
+        false,                              // uses acceleration
+        ACTIVE,                             // EntityStatus
+        true                                // shark so is enemy 
+    );
+    g_game_state.platforms[1].set_position(glm::vec3(0.0f, 0.0f, 1.0f));
+    g_game_state.platforms[1].set_scale(glm::vec3(2.65f, 1.0f, 1.0f));
+    g_game_state.platforms[1].set_movement(glm::vec3(-0.5f, 0.0f, 0.0f));
+
+    // tower
+    g_game_state.platforms[2] = Entity(
+        tower_texture_id,                   // texture id
+        0.0f,                               // speed
+        glm::vec3(0.0f),                    // acceleration
+        false,                              // uses acceleration
+        ACTIVE,                             // EntityStatus
+        false                               // landable platform so not enemy
+    );
+    g_game_state.platforms[2].set_position(glm::vec3(1.0f, -3.2f, 1.0f));
+    g_game_state.platforms[2].set_scale(glm::vec3(0.75f, 1.0f, 1.0f));
+
+
 
     for (int i = 0; i < NUM_PLATFORMS; i++)
     {
@@ -297,7 +348,18 @@ void process_input()
                     g_game_state.ship->set_status(ACTIVE);
                 }
                 break;
+            // for easier access
+            case SDLK_r:
+                initialise();
+                break;
+            case SDLK_a:
+                g_game_state.ship->set_fuel(g_game_state.ship->get_fuel() + 100);
+                break;
+            case SDLK_d:
+                g_game_state.ship->set_fuel(g_game_state.ship->get_fuel() - 100);
+                break;
             }
+
         default:
             break;
         }
@@ -339,9 +401,13 @@ void update()
                 g_game_state.ship->rotate(FIXED_TIMESTEP, g_angle_dir);
             }
 
+            for (int i = 0; i < NUM_PLATFORMS; i++) 
+            {
+                g_game_state.platforms[i].update(FIXED_TIMESTEP, nullptr, 0);
+            }
+
             // update acceleration and fuel usage
             g_game_state.ship->update_fuel(FIXED_TIMESTEP, g_using_fuel);
-
             // update the position after all of that
             g_game_state.ship->update(FIXED_TIMESTEP, g_game_state.platforms, NUM_PLATFORMS);
         }
@@ -361,7 +427,7 @@ void render()
     glm::vec3 curr_velocity = g_game_state.ship->get_velocity();
     std::string x_velocity = "X_SPEED " + std::to_string(int(curr_velocity.x*100));
     std::string y_velocity = "Y_SPEED: " + std::to_string(int(curr_velocity.y*100));
-    std::string angle_str = "ANGLE: " + std::to_string(int(g_game_state.ship->get_angle()));
+    std::string angle_str = "ANGLE: " + std::to_string(((int(g_game_state.ship->get_angle()) % 360) + 360) % 360);
 
     // render text
     draw_text(&g_shader_program, g_font_texture_id, fuel_string, 0.25f, 0.05f, glm::vec3(3.0f, 3.5f, 0.0f));
