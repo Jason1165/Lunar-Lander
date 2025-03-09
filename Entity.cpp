@@ -67,6 +67,31 @@ Entity::Entity(GLuint texture_id, float speed, glm::vec3 acceleration, bool use_
     m_enemy(enemy)
 { }
 
+Entity::Entity(GLuint texture_id, float speed, glm::vec3 movement, std::vector<std::vector<int>> animations,
+    int animation_frames, int animation_index, int animation_cols, int animation_rows) :
+    m_position(0.0f),
+    m_movement(movement),
+    m_scale(1.0f),
+    m_model_matrix(1.0f),
+    m_velocity(0.0f),
+    m_rotation(0.0f, 0.0f, 1.0f),
+    m_angle(0.0f),
+    m_fuel(0),
+    m_width(0.0f),
+    m_height(0.0f),
+    m_texture_id(texture_id),
+    m_speed(speed),
+    m_acceleration(0.0f),
+    m_use_acceleration(false),
+    m_status(ACTIVE),
+    m_enemy(false),
+    m_animation_frames(animation_frames),
+    m_animation_index(animation_index),
+    m_animation_cols(animation_cols),
+    m_animation_rows(animation_rows),
+    m_animations(animations)
+{}
+
 
 // Destructor
 Entity::~Entity() {}
@@ -101,6 +126,26 @@ void Entity::update(float delta_time, Entity* collidable_entities, int collidabl
         }
     }
 
+    if (m_animation_indices != NULL)
+    {
+        if (glm::length(m_movement) != 0)
+        {
+            m_animation_time += delta_time;
+            float frames_per_second = (float)1 / SECONDS_PER_FRAME;
+
+            if (m_animation_time >= frames_per_second)
+            {
+                m_animation_time = 0.0f;
+                m_animation_index++;
+
+                if (m_animation_index >= m_animation_frames)
+                {
+                    m_animation_index = 0;
+                }
+            }
+        }
+    }
+
     // we playing?
     if (m_status == ACTIVE && !m_use_acceleration) {
         m_velocity.x = m_movement.x * m_speed;
@@ -126,16 +171,61 @@ void Entity::update(float delta_time, Entity* collidable_entities, int collidabl
     m_model_matrix = glm::scale(m_model_matrix, m_scale);
 }
 
+void Entity::draw_sprite_from_texture_atlas(ShaderProgram* program, GLuint texture_id, int index)
+{
+    // Step 1: Calculate the UV location of the indexed frame
+    float u_coord = (float)(index % m_animation_cols) / (float)m_animation_cols;
+    float v_coord = (float)(index / m_animation_cols) / (float)m_animation_rows;
+
+    // Step 2: Calculate its UV size
+    float width = 1.0f / (float)m_animation_cols;
+    float height = 1.0f / (float)m_animation_rows;
+
+    // Step 3: Just as we have done before, match the texture coordinates to the vertices
+    float tex_coords[] =
+    {
+        u_coord, v_coord + height, u_coord + width, v_coord + height, u_coord + width, v_coord,
+        u_coord, v_coord + height, u_coord + width, v_coord, u_coord, v_coord
+    };
+
+    float vertices[] =
+    {
+        -0.5, -0.5, 0.5, -0.5,  0.5, 0.5,
+        -0.5, -0.5, 0.5,  0.5, -0.5, 0.5
+    };
+
+    // Step 4: And render
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+
+    glVertexAttribPointer(program->get_position_attribute(), 2, GL_FLOAT, false, 0, vertices);
+    glEnableVertexAttribArray(program->get_position_attribute());
+
+    glVertexAttribPointer(program->get_tex_coordinate_attribute(), 2, GL_FLOAT, false, 0, tex_coords);
+    glEnableVertexAttribArray(program->get_tex_coordinate_attribute());
+
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    glDisableVertexAttribArray(program->get_position_attribute());
+    glDisableVertexAttribArray(program->get_tex_coordinate_attribute());
+}
+
+void Entity::set_animation_state(int num)
+{
+
+    // Update the texture and animation indices based on the current animation
+    m_animation_indices = m_animations[num].data();
+}
+
 
 void Entity::render(ShaderProgram* program)
 {
     program->set_model_matrix(m_model_matrix);
 
-    //if (m_animation_indices != NULL)
-    //{
-    //    draw_sprite_from_texture_atlas(program, m_texture_id, m_animation_indices[m_animation_index]);
-    //    return;
-    //}
+    if (m_animation_indices != NULL)
+    {
+        draw_sprite_from_texture_atlas(program, m_texture_id, m_animation_indices[m_animation_index]);
+        return;
+    }
 
     float vertices[] = { -0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5 };
     float tex_coords[] = { 0.0,  1.0, 1.0,  1.0, 1.0, 0.0,  0.0,  1.0, 1.0, 0.0,  0.0, 0.0 };
@@ -163,7 +253,8 @@ void Entity::rotate(float delta_time, AngleDirection direction)
     }
 }
 
-void Entity::update_fuel(float delta_time, bool using_fuel)
+
+void Entity::update_fuel(float delta_time, bool using_fuel, std::vector<Entity*>& bubbles, GLuint texture_id)
 {
     // reset acceleration matrix
     m_acceleration = glm::vec3(0.0f);
@@ -171,6 +262,43 @@ void Entity::update_fuel(float delta_time, bool using_fuel)
         m_acceleration.x = glm::cos(glm::radians(m_angle));
         m_acceleration.y = glm::sin(glm::radians(m_angle));
         m_fuel -= FUEL_PER_TIME;
+
+        if (m_fuel % 20 == 0)
+        {
+            Entity* bubble = new Entity(
+                texture_id,                // texture
+                1.0f,                               // speed
+                glm::vec3(0.0f, 0.5f, 0.0f),        // movement vector
+                { { 0, 1, 2, 3, 4, 5, 6, 7 } },     // animations
+                8,                                  // num frames
+                0,                                  // index
+                8,                                  // cols
+                1                                   // rows
+            );
+
+            glm::vec3 temp_position = this->get_position();
+            float temp_angle = this->get_angle();
+            temp_angle = glm::radians(temp_angle);
+
+            float cos_A = glm::cos(temp_angle);
+            float sin_A = glm::sin(temp_angle);
+
+            float half_width = m_width / 2;
+
+            float curr_x = temp_position.x;
+            float curr_y = temp_position.y;
+
+            float new_x = curr_x + (cos_A * -half_width);
+            float new_y = curr_y + (sin_A * -half_width);
+
+            bubble->set_animation_state(0);
+            bubble->set_position(glm::vec3(new_x, new_y, 1.0f));
+            bubble->set_scale(glm::vec3(0.2f, 0.2f, 1.0f));
+            bubble->update(0.0f, nullptr, 0);
+            bubbles.push_back(bubble);
+        }
+
+
     }
     m_acceleration.x *= ACCEL_SCALE;
     m_acceleration.y *= ACCEL_SCALE;

@@ -39,6 +39,15 @@ private:
 
 	// ----- ANIMATIONS ----- //
 
+	std::vector<std::vector<int>> m_animations;
+	int m_animation_cols;
+	int m_animation_frames,
+		m_animation_index,
+		m_animation_rows;
+
+	int* m_animation_indices = nullptr;
+	float m_animation_time = 1.0f;
+
 	// ----- COLLISIONS ----- //
 	bool m_enemy;
 
@@ -64,20 +73,23 @@ public:
 	Entity();
 	Entity(GLuint texture_id, float speed, glm::vec3 acceleration, bool use_accel, EntityStatus status, bool enemy);
 	~Entity();
+	Entity(GLuint texture_id, float speed, glm::vec3 movement, std::vector<std::vector<int>> animations,
+		int animation_frames, int animation_index, int animation_cols, int animation_rows);
 
 	// logs
 	const void log_attributes();
 	const void log_corners();
 
+	void draw_sprite_from_texture_atlas(ShaderProgram* program, GLuint texture_id, int index);
 	void update(float delta_time, Entity* collidable_entities, int collidable_entity_count);
 	void render(ShaderProgram* program);
 	void rotate(float delta_time, AngleDirection dir);
-	void update_fuel(float delta_time, bool using_fuel);
+	void update_fuel(float delta_time, bool using_fuel, std::vector<Entity*>& bubbles, GLuint texture_id);
+	void set_animation_state(int num);
 
 	void set_dimensions(float x, float y);
 
 	// SAT collision cause box collisions are janky
-
 	bool check_collision_SAT(Entity* other);
 
 
@@ -92,6 +104,7 @@ public:
 	float			const	get_angle()			const { return m_angle; }
 	EntityStatus	const	get_status()		const { return m_status; }
 	bool			const	is_enemy()			const { return m_enemy;  }
+	int				const	get_index()			const { return m_animation_index;  }
 
 	// ----- SETTERS ----- //
 	void const set_position(glm::vec3 new_position) { m_position = new_position; }

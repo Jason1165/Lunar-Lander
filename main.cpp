@@ -65,11 +65,13 @@ TEXTURE_BORDER = 0;
 
 // ----- OBJECT CONSTANTS ----- //
 GLuint g_font_texture_id;
+GLuint g_bubble_texture_id;
 constexpr char SHIP_FILEPATH[] = "assets/bottle_ship_flip.png"; // 208 x 96 13:6
 constexpr char FONTSHEET_FILEPATH[] = "assets/modified_atari_font.png"; // 256 x 256 
 constexpr char PLATFORM1_FILEPATH[] = "assets/castle.png"; // 256 x 128 
 constexpr char SHARK_FILEPATH[] = "assets/shark.png"; // 424 x 160 53: 20
 constexpr char TOWER_FILEPATH[] = "assets/tower.png"; // 96 x 128 3:4
+constexpr char BUBBLE_FILEPATH[] = "assets/bubble2.png"; // 16 x 16
 
 // ----- STRUCTS AND ENUMS ----- //
 enum AppStatus { RUNNING, TERMINATED };
@@ -79,6 +81,7 @@ struct GameState
 {
     Entity* ship;
     Entity* platforms;
+    std::vector<Entity*> bubbles;
 };
 
 // ----- GAME CONSTANTS ----- //
@@ -250,6 +253,7 @@ void initialise()
     GLuint shark_texture_id = load_texture(SHARK_FILEPATH, NEAREST);
     GLuint tower_texture_id = load_texture(TOWER_FILEPATH, NEAREST);
     g_font_texture_id = load_texture(FONTSHEET_FILEPATH, NEAREST);
+    g_bubble_texture_id = load_texture(BUBBLE_FILEPATH, NEAREST);
 
     // ----- STUFF TO INITIALISE ----- //
 
@@ -309,8 +313,6 @@ void initialise()
     );
     g_game_state.platforms[2].set_position(glm::vec3(1.0f, -3.2f, 1.0f));
     g_game_state.platforms[2].set_scale(glm::vec3(0.75f, 1.0f, 1.0f));
-
-
 
     for (int i = 0; i < NUM_PLATFORMS; i++)
     {
@@ -406,9 +408,20 @@ void update()
                 g_game_state.platforms[i].update(FIXED_TIMESTEP, nullptr, 0);
             }
 
-            // update acceleration and fuel usage
-            g_game_state.ship->update_fuel(FIXED_TIMESTEP, g_using_fuel);
-            // update the position after all of that
+            for (size_t i = g_game_state.bubbles.size(); i > 0; i--) {
+                size_t index = i - 1;
+                if (g_game_state.bubbles[index]->get_index() == 7) {
+                    delete g_game_state.bubbles[index];  // Free memory
+                    g_game_state.bubbles[index] = nullptr; // Prevent dangling pointer
+                    g_game_state.bubbles.erase(g_game_state.bubbles.begin() + index);  // Remove from vector
+                }
+                else {
+                    g_game_state.bubbles[index]->update(FIXED_TIMESTEP, nullptr, 0);
+                }
+
+            }
+
+            g_game_state.ship->update_fuel(FIXED_TIMESTEP, g_using_fuel, g_game_state.bubbles, g_bubble_texture_id);
             g_game_state.ship->update(FIXED_TIMESTEP, g_game_state.platforms, NUM_PLATFORMS);
         }
         // decrement
@@ -445,21 +458,35 @@ void render()
         g_game_state.platforms[i].render(&g_shader_program);
     }
 
+    for (size_t i = g_game_state.bubbles.size(); i > 0; i--) {
+        g_game_state.bubbles[i-1]->render(&g_shader_program);
+    }
+
+
+
     // render at start
     if (g_game_state.ship->get_status() == START)
     {
         draw_text(&g_shader_program, g_font_texture_id, "PRESS SPACE TO BEGIN", 0.25f, 0.05f, glm::vec3(-1.2f, 0.0f, 0.0f));
     }
     // render at collsion
-    if (g_game_state.ship->get_status() == CRASHED)
+    else if (g_game_state.ship->get_status() == CRASHED)
     {
         draw_text(&g_shader_program, g_font_texture_id, "MISSION FAILED", 0.25f, 0.05f, glm::vec3(-1.2f, 0.0f, 0.0f));
     }
-    if (g_game_state.ship->get_status() == LANDED)
+    else if (g_game_state.ship->get_status() == LANDED)
     {
         draw_text(&g_shader_program, g_font_texture_id, "MISSION ACCOMPLISHED", 0.25f, 0.05f, glm::vec3(-1.2f, 0.0f, 0.0f));
     }
-
+    else if (g_game_state.ship->get_position().y > 5.0f)
+    {
+        draw_text(&g_shader_program, g_font_texture_id, "The Sky is the Limit", 0.25f, 0.05f, glm::vec3(-1.2f, -1.0f, 0.0f));
+        draw_text(&g_shader_program, g_font_texture_id, "Good Luck Getting Back Down Here", 0.25f, 0.05f, glm::vec3(-2.0f, -1.3f, 0.0f));
+    }
+    else if (g_game_state.ship->get_fuel() == 0)
+    {
+        draw_text(&g_shader_program, g_font_texture_id, "and you're outta fuel", 0.25f, 0.05f, glm::vec3(-1.5f, -1.0f, 0.0f));
+    }
 
     SDL_GL_SwapWindow(g_display_window);
 }
@@ -470,6 +497,9 @@ void shutdown()
     SDL_Quit();
 
     // delete pointers
+    for (size_t i = g_game_state.bubbles.size(); i > 0; i--) {
+        delete g_game_state.bubbles[i - 1];
+    }
 }
 
 // ----- GAME LOOP ----- //
