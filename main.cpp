@@ -35,6 +35,8 @@
 // Ship in a Bottle (SHIP) by Laura Brown, adapted for this project: https://asciiartist.com/ldb/transportationtravelascii.txt
 // Asciiquarium, inspiration for the assets: https://github.com/cmatsuoka/asciiquarium
 // Underwater Castle, taken from asciiquarium, modified for better ratios and hitboxes, credit goes to Joan Stark ???
+// Shark, taken from asciiquarium
+// Edges and Nozzle Vertices: https://www.desmos.com/calculator/gulwp5qo0o
 
 
 // ----- CONSTANTS ----- //
@@ -43,10 +45,10 @@ constexpr float WINDOW_MULTI = 1.5f;
 constexpr int WINDOW_WIDTH = 640 * WINDOW_MULTI,
 WINDOW_HEIGHT = 480 * WINDOW_MULTI;
 
-constexpr float BG_RED = 0.0f,
-BG_GREEN = 83.0f / 255.0f,
-BG_BLUE = 132.0f / 255.0f,
-BG_OPACITY = 165.0f / 255.0f;
+constexpr float BG_RED = 0.0f / 255.0f,
+BG_GREEN = 0.0f / 255.0f,
+BG_BLUE = 170.0f / 255.0f,
+BG_OPACITY = 1.0f;
 
 constexpr int VIEWPORT_X = 0,
 VIEWPORT_Y = 0,
